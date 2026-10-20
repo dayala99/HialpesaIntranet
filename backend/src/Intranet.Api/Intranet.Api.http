@@ -1,0 +1,21 @@
+@baseUrl = http://localhost:5080
+
+GET {{baseUrl}}/health
+
+### Sesión (Windows en SqlServer; demostración en Development/Demo)
+GET {{baseUrl}}/api/v1/sesion
+
+### OC de ejemplo; sustituir la referencia en modo SqlServer
+GET {{baseUrl}}/api/v1/logistica/avios/ordenes/002/000001
+
+### Requerimientos de origen
+GET {{baseUrl}}/api/v1/logistica/avios/ordenes/002/000001/items/001/requerimientos
+
+### Cálculo puro, sin escritura en SQL
+POST {{baseUrl}}/api/v1/logistica/avios/previsualizacion
+Content-Type: application/json
+
+{
+  "rows": [{ "factory": "001", "productionOrder": "NP-EJEMPLO", "style": "EST-1", "presentationCode": "1", "color": "Negro", "size": "S", "destination": "", "quantity": 21 }],
+  "articles": [{ "itemCode": "AV-1", "description": "Etiqueta", "multiple": 5 }, { "itemCode": "AV-2", "description": "Sticker", "multiple": 5 }]
+}
