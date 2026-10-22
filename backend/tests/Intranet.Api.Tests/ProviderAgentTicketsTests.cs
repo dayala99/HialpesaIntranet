@@ -1,4 +1,6 @@
-using Intranet.Api.Infrastructure;
+using Intranet.Entity;
+using Intranet.Service;
+using Intranet.Data;
 namespace Intranet.Api.Tests;
 public sealed class ProviderAgentTicketsTests
 {

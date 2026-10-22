@@ -7,12 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.1.89" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Negotiate" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.13" />
   </ItemGroup>
 
+  <ItemGroup><ProjectReference Include="../Intranet.Service/Intranet.Service.csproj" /><ProjectReference Include="../Intranet.Entity/Intranet.Entity.csproj" /><ProjectReference Include="../Intranet.Data/Intranet.Data.csproj" /></ItemGroup>
 </Project>

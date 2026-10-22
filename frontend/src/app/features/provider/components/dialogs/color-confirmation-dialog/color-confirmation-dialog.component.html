@@ -1,0 +1,8 @@
+
+ <h2 mat-dialog-title>Confirmar coincidencia de colores</h2>
+ <mat-dialog-content>
+  <p>PO: <strong>{{data.po}}</strong>. El nombre del proveedor aparece dentro del texto de Gestión. Revisa las equivalencias antes de completar las cantidades.</p>
+  <div class="table-scroll color-confirmation"><table><thead><tr><th>Estilo / código</th><th>Color del proveedor</th><th>Texto en Gestión</th></tr></thead><tbody><tr *ngFor="let color of data.confirmations"><td>{{color.style}}<small>{{color.colorCode}}</small></td><td>{{color.providerColor}}</td><td>{{color.gestionColor}}</td></tr></tbody></table></div>
+  <p>¿Confirmas que corresponden al mismo color? La confirmación se aplica solamente a este llenado. Solo se completarán cantidades; el pedido no se enviará.</p>
+ </mat-dialog-content>
+ <mat-dialog-actions align="end"><button type="button" [mat-dialog-close]="false">No</button><button class="primary" type="button" [mat-dialog-close]="true">Sí, confirmar y llenar</button></mat-dialog-actions>

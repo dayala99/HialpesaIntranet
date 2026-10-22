@@ -1,5 +1,6 @@
-using Intranet.Api.Infrastructure;
-using Intranet.Api.Services;
+using Intranet.Entity;
+using Intranet.Service;
+using Intranet.Data;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
@@ -15,17 +16,19 @@ if (!builder.Environment.IsDevelopment() && mode == "Demo") throw new InvalidOpe
 var demo = builder.Environment.IsDevelopment() && mode == "Demo";
 builder.Services.Configure<GestionOptions>(builder.Configuration.GetSection("Gestion"));
 builder.Services.Configure<ApplicationLoginOptions>(builder.Configuration.GetSection("ApplicationLogin"));
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options=>{
- options.Cookie.Name="Hialpesa.Intranet.Session";options.Cookie.HttpOnly=true;
- options.Cookie.SameSite=SameSiteMode.Lax;options.Cookie.SecurePolicy=CookieSecurePolicy.SameAsRequest;
- options.ExpireTimeSpan=TimeSpan.FromHours(8);options.SlidingExpiration=true;
- options.Events.OnRedirectToLogin=c=>{c.Response.StatusCode=401;return Task.CompletedTask;};
- options.Events.OnRedirectToAccessDenied=c=>{c.Response.StatusCode=403;return Task.CompletedTask;};
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options =>
+{
+    options.Cookie.Name = "Hialpesa.Intranet.Session"; options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax; options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.ExpireTimeSpan = TimeSpan.FromHours(8); options.SlidingExpiration = true;
+    options.Events.OnRedirectToLogin = c => { c.Response.StatusCode = 401; return Task.CompletedTask; };
+    options.Events.OnRedirectToAccessDenied = c => { c.Response.StatusCode = 403; return Task.CompletedTask; };
 });
-builder.Services.AddAuthorization(options=>options.FallbackPolicy=new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
-builder.Services.AddRateLimiter(options=>{
- options.RejectionStatusCode=429;
- options.AddPolicy("login",context=>RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new FixedWindowRateLimiterOptions{PermitLimit=5,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));
+builder.Services.AddAuthorization(options => options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = 429;
+    options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 builder.Services.AddControllers();
 builder.Services.AddCors(options => options.AddPolicy("LocalAngular", policy => policy
@@ -33,18 +36,17 @@ builder.Services.AddCors(options => options.AddPolicy("LocalAngular", policy => 
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<GestionConnectionFactory>();
-builder.Services.AddScoped<GestionIdentity>();
-builder.Services.AddScoped<IGestionLoginRepository,GestionLoginRepository>();
-builder.Services.AddScoped<IntranetLogin>();
-builder.Services.AddScoped<AviosRepository>();
-builder.Services.AddSingleton<QuantityCalculator>();
-builder.Services.AddScoped<RegistrationReadRepository>();
-builder.Services.AddSingleton<ProviderAgentTickets>();
-builder.Services.AddScoped<IOrderWriteGateway, SqlOrderWriteGateway>();
-builder.Services.AddScoped<OrderRegistrationService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<RequestActor>(services =>
+{
+    var context = services.GetRequiredService<IHttpContextAccessor>().HttpContext ?? throw new InvalidOperationException("No hay una solicitud activa.");
+    return new RequestActor(context.User, context.Request.Headers["X-Intranet-Write"] == "1", context.Request.Headers["X-Intranet-Provider"] == "1", context.Request.Headers["X-Intranet-Agent"] == "1", context.Connection.RemoteIpAddress is { } address && System.Net.IPAddress.IsLoopback(address), context.TraceIdentifier);
+});
+builder.Services.AddIntranetData();
+builder.Services.AddIntranetServices();
 var app = builder.Build();
-app.UseExceptionHandler(handler => handler.Run(async context => {
+app.UseExceptionHandler(handler => handler.Run(async context =>
+{
     var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
     var denied = exception is UnauthorizedAccessException;
     var conflict = exception is RegistrationConflictException;

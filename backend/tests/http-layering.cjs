@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');
+(async()=>{const base=process.env.INTRANET_LAYER_TEST_URL||'http://localhost:5089';let cookie='';async function request(url,method='GET',body,headers={}){return fetch(base+url,{method,headers:{...(cookie?{Cookie:cookie}:{}),...(body?{'Content-Type':'application/json'}:{}),...headers},body:body?JSON.stringify(body):undefined});}
+let response=await request('/health');assert.equal(response.status,200);assert.equal((await response.json()).mode,'Demo');assert.equal((await request('/api/v1/sesion')).status,401);
+response=await request('/api/v1/sesion/login','POST',{username:'programador04',password:'programador04'},{'X-Intranet-Session':'1'});assert.equal(response.status,200);cookie=response.headers.get('set-cookie').split(';')[0];assert.equal((await response.json()).demo,true);
+response=await request('/api/v1/logistica/avios/ordenes/002/000001');assert.equal(response.status,200);assert.equal((await response.json()).order.series,'002');assert.equal((await request('/api/v1/logistica/avios/ordenes/invalid/000001')).status,400);
+response=await request('/api/v1/logistica/avios/previsualizacion','POST',{rows:[{productionOrder:'NP1',style:'STYLE1',color:'BLACK',size:'L',quantity:130.5}],articles:[{itemCode:'PT001',description:'Ticket',multiple:5}]});assert.equal(response.status,200);assert.equal((await response.json()).rows[0].purchase,135);
+assert.equal((await request('/api/v1/logistica/avios/registro/catalogos')).status,400);
+assert.equal((await request('/api/v1/logistica/importaciones')).status,200);
+assert.equal((await request('/api/v1/logistica/importaciones/ordenes/002/000001')).status,403);
+assert.equal((await request('/api/v1/proveedor/preparar-llenado','POST',{series:'002',number:'000001',po:'PO-000001'})).status,403);
+assert.equal((await request('/api/v1/proveedor/recuperar-llenado','POST',{token:'A'.repeat(64)},{'X-Intranet-Agent':'1'})).status,410);
+const current=await (await request('/swagger/v1/swagger.json')).json();fs.writeFileSync('.tmp/backend-layering/openapi-after.json',JSON.stringify(current));
+if(fs.existsSync('.tmp/backend-layering/openapi-before.json')){const before=JSON.parse(fs.readFileSync('.tmp/backend-layering/openapi-before.json'));const routes=doc=>Object.entries(doc.paths).flatMap(([p,v])=>Object.keys(v).map(m=>m+' '+p)).sort();assert.deepEqual(routes(current),routes(before));for(const [path,item]of Object.entries(before.paths))for(const [method,operation]of Object.entries(item)){const params=op=>(op.parameters||[]).map(p=>({name:p.name,in:p.in,required:p.required,schema:p.schema}));assert.deepEqual(params(current.paths[path][method]),params(operation),method+' '+path);}}
+console.log('HTTP: autenticación, permisos, OC Demo, validación, redondeo, importaciones y tickets; rutas y parámetros OpenAPI conservados. Sin escrituras en base de datos.');
+})().catch(e=>{console.error(e);process.exitCode=1});

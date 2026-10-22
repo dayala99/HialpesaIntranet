@@ -96,10 +96,11 @@ let activePage;let stage="starting";
 
 
  }
+ let completedReport;
  async function runFill(command){
   const approved=[...(command.colorConfirmations||[])];let resumeCurrent=false;
   for(let attempt=0;attempt<7;attempt++){
-   try{await fillPo(command.po,command.rows,approved,resumeCurrent,command.mode);if(['po-required','preserve-provider'].includes(command.mode)||!command.series||!command.number){stage='po-without-oc-complete';console.log(JSON.stringify({status:'awaiting-completion-acknowledgment'}));await require('./provider-color-dialog.cjs').showCompleted(page);return true;}const shipping=await require('./provider-shipping.cjs').fillShipping(page,command,value=>{stage=value;});require('fs').writeFileSync('test-results/avery-shipping.json',JSON.stringify(shipping,null,2));await require('./provider-preview.cjs').openPreview(page,command,value=>{stage=value;});return true;}catch(error){
+   try{await fillPo(command.po,command.rows,approved,resumeCurrent,command.mode);if(['po-required','preserve-provider'].includes(command.mode)||!command.series||!command.number){stage='po-without-oc-complete';console.log(JSON.stringify({status:'awaiting-completion-acknowledgment'}));await require('./provider-color-dialog.cjs').showCompleted(page);return true;}const shipping=await require('./provider-shipping.cjs').fillShipping(page,command,value=>{stage=value;});require('fs').writeFileSync('test-results/avery-shipping.json',JSON.stringify(shipping,null,2));completedReport=await require('./provider-preview.cjs').openPreview(page,command,value=>{stage=value;});return true;}catch(error){
     if(error.code==='MATCH_ERROR'&&process.env.AVERY_COLOR_CONFIRMATION_UI==='browser'){
      console.log(JSON.stringify({status:'awaiting-mismatch-acknowledgment'}));
      await require('./provider-color-dialog.cjs').showMismatch(page,command.po,error.message);error.displayedInBrowser=true;throw error;
@@ -116,14 +117,14 @@ let activePage;let stage="starting";
  try{
   if(await runFill(initial)){
   await page.screenshot({path:'test-results/avery-login.png',fullPage:false});
-  console.log(JSON.stringify({status:'signed-in'}));}
+  console.log(JSON.stringify({status:'signed-in',report:completedReport}));}
  }catch(error){
   require('fs').writeFileSync('test-results/avery-failure.json',JSON.stringify({stage,reason:error.message,time:new Date().toISOString()}));
   await page.screenshot({path:'test-results/avery-login-failure.png'}).catch(()=>{});
   console.log(JSON.stringify({status:error.code==='COLOR_CONFIRMATION'?'confirmation-required':'failed',stage,confirmations:error.code==='COLOR_CONFIRMATION'?error.confirmations:undefined,detail:error.code==='MATCH_ERROR'?error.message:undefined,displayedInBrowser:error.displayedInBrowser===true}));
  }
  let queue=Promise.resolve();
- commandInput.on('line',line=>{queue=queue.then(async()=>{try{const command=JSON.parse(line);if(await runFill(command))console.log(JSON.stringify({status:'po-filled'}));}catch(error){require('fs').writeFileSync('test-results/avery-failure.json',JSON.stringify({stage,reason:error.message,closed:page.isClosed(),time:new Date().toISOString()}));await page.screenshot({path:'test-results/avery-login-failure.png'}).catch(()=>{});console.log(JSON.stringify({status:error.code==='COLOR_CONFIRMATION'?'confirmation-required':'failed',stage,confirmations:error.code==='COLOR_CONFIRMATION'?error.confirmations:undefined,detail:error.code==='MATCH_ERROR'?error.message:undefined,displayedInBrowser:error.displayedInBrowser===true}));}})});
+ commandInput.on('line',line=>{queue=queue.then(async()=>{try{const command=JSON.parse(line);if(await runFill(command))console.log(JSON.stringify({status:'po-filled',report:completedReport}));}catch(error){require('fs').writeFileSync('test-results/avery-failure.json',JSON.stringify({stage,reason:error.message,closed:page.isClosed(),time:new Date().toISOString()}));await page.screenshot({path:'test-results/avery-login-failure.png'}).catch(()=>{});console.log(JSON.stringify({status:error.code==='COLOR_CONFIRMATION'?'confirmation-required':'failed',stage,confirmations:error.code==='COLOR_CONFIRMATION'?error.confirmations:undefined,detail:error.code==='MATCH_ERROR'?error.message:undefined,displayedInBrowser:error.displayedInBrowser===true}));}})});
  // Keep the authenticated window available to the user. Never click Save Order or submit the order.
 
 })().catch(async(error)=>{require("fs").writeFileSync("test-results/avery-failure.json",JSON.stringify({stage,reason:error.message,time:new Date().toISOString()}));if(activePage)await activePage.screenshot({path:'test-results/avery-login-failure.png'}).catch(()=>{});console.log(JSON.stringify({status:error.code==='COLOR_CONFIRMATION'?'confirmation-required':'failed',stage,confirmations:error.code==='COLOR_CONFIRMATION'?error.confirmations:undefined,detail:error.code==='MATCH_ERROR'?error.message:undefined,displayedInBrowser:error.displayedInBrowser===true}));process.exit(1)});

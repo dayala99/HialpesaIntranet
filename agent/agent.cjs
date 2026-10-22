@@ -1,4 +1,5 @@
 'use strict';
+const {inspectLock,stopChild}=require('./process-control.cjs');
 const fs=require('node:fs');const path=require('node:path');const crypto=require('node:crypto');
 function validateJob(envelope,publicKey,now=Date.now()){
  if(!envelope||typeof envelope.payload!=='string'||typeof envelope.signature!=='string')throw Error('Archivo de llenado no válido.');
@@ -65,20 +66,20 @@ async function main(){
  const work=path.join(process.env.LOCALAPPDATA,'Hialpesa','Intranet','VinceAgent');fs.mkdirSync(path.join(work,'test-results'),{recursive:true});
  // A lock prevents concurrent browser fills under this Windows account; stale locks are detected by PID.
  const lock=path.join(work,'agent.lock');
- if(fs.existsSync(lock)){const pid=Number(fs.readFileSync(lock,'utf8'));try{process.kill(pid,0);throw Error('Ya hay un llenado abierto. Cierra primero el navegador del agente.');}catch(e){if(e.code!=='ESRCH')throw e;fs.unlinkSync(lock);}}
+ if(fs.existsSync(lock)){const state=inspectLock(fs.readFileSync(lock,'utf8'));if(state==='active')throw Error('Ya hay un llenado abierto. Cierra primero el navegador del agente.');if(state==='denied')throw Error('Windows no permite comprobar el proceso de una sesión anterior del agente. Cierra sus ventanas. Si ya están cerradas, elimina únicamente el archivo '+lock+' y vuelve a abrir el agente desde la intranet.');fs.unlinkSync(lock);}
  const fd=fs.openSync(lock,'wx');fs.writeSync(fd,String(process.pid));fs.closeSync(fd);const clean=()=>{try{fs.unlinkSync(lock)}catch{}};process.on('exit',clean);
  const worker=require('node:child_process').spawn(process.execPath,[path.join(__dirname,'tools','provider-login.cjs')],{cwd:work,windowsHide:true,stdio:['pipe','pipe','ignore'],env:{...process.env,AVERY_COLOR_CONFIRMATION_UI:'browser',AVERY_USERNAME:credentials.Username,AVERY_PASSWORD:credentials.Password,AVERY_LOGIN_URL:credentials.LoginUrl}});
  credentials.Password='';
  const trace=(event,details={})=>{try{const file=path.join(work,'test-results','agent-events.jsonl');if(fs.existsSync(file)&&fs.statSync(file).size>1048576)fs.writeFileSync(file,'');fs.appendFileSync(file,JSON.stringify({time:new Date().toISOString(),po:job.po,event,...details})+'\n');}catch{}};
  const approved=[];const send=()=>worker.stdin.write(JSON.stringify({po:job.po,series:job.series,number:job.number,rows:job.rows,mode:job.mode,colorConfirmations:approved})+'\n');
  let replied=false,notice,stopped=false;
- const timeoutAction=()=>{replied=true;worker.kill();dialog('El proveedor excedió el tiempo de espera. Selecciona nuevamente el PO en la intranet.',false);};
+ const timeoutAction=()=>{replied=true;stopChild(worker);dialog('El proveedor excedió el tiempo de espera. Selecciona nuevamente el PO en la intranet.',false);};
  let timer=setTimeout(timeoutAction,240000);
  worker.on('error',()=>{replied=true;clearTimeout(timer);clean();dialog('No se pudo iniciar el navegador del agente.',false);});
  const lines=require('node:readline').createInterface({input:worker.stdout});let rounds=0;
  const finishWorker=()=>{
   if(stopped)return;stopped=true;clearTimeout(timer);clean();
-  if(notice&&!notice.killed)notice.kill();
+  if(notice&&!notice.killed)stopChild(notice);
   lines.close();worker.stdin.destroy();worker.stdout.destroy();
   if(!replied)dialog('El navegador se cerró antes de completar el llenado. Selecciona nuevamente el PO para reintentar.',false);
   if(require.main===module)process.exit(0);
@@ -103,7 +104,7 @@ async function main(){
    }
    clearTimeout(timer);
    if(!['signed-in','po-filled'].includes(result.status))throw Error(result.detail||'El portal detuvo el llenado en: '+(result.stage||'inicio')+'. Revisa la ventana del proveedor.');
-   notice=showNotice('Cierra el navegador cuando termines.');
+   notice=showNotice(result.report?'Reporte guardado en:\n'+result.report+'\n\nCierra el navegador cuando termines.':'Cierra el navegador cuando termines.');
   }catch(e){trace('agent-error',{message:e.message});clearTimeout(timer);dialog(e.message,false);}
  });
  send();

@@ -1,6 +1,7 @@
+using Intranet.Entity;
+using Intranet.Service;
+using Intranet.Data;
 using System.Text.Json;
-using Intranet.Api.Contracts;
-using Intranet.Api.Services;
 using Xunit;
 namespace Intranet.Api.Tests;
 public class PoQuantitySourceTests

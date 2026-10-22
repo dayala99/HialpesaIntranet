@@ -1,5 +1,7 @@
+using Intranet.Entity;
+using Intranet.Service;
+using Intranet.Data;
 using System.Security.Claims;
-using Intranet.Api.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;

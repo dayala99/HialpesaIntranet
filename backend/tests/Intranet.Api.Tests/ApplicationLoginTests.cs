@@ -1,5 +1,7 @@
+using Intranet.Entity;
+using Intranet.Service;
+using Intranet.Data;
 using System.Security.Cryptography;
-using Intranet.Api.Infrastructure;
 namespace Intranet.Api.Tests;
 public sealed class ApplicationLoginTests{
  private static ApplicationLoginOptions Options(){

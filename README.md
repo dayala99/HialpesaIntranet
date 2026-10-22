@@ -91,3 +91,5 @@ Angular 18 está fuera de soporte y el árbol de dependencias mantiene hallazgos
 Confirmar el guardado real y las validaciones heredadas con los datos de prueba del usuario. No hay autorización/cambio de estado, eliminación ni actualización de cabeceras existentes. La impresión web muestra suma de líneas antes de descuentos/impuestos y no reproduce las macros históricas de Excel. La plantilla específica del proveedor y el formato definitivo de revisión de impresión de Calidad siguen requiriendo su definición.
 
 No hay reintentos automáticos de registro. Si se pierde una respuesta después de guardar, consultar antes de repetir. Este proyecto no incluye despliegue productivo ni cambios en SQL.
+
+La organización del backend en Api, Entity, Service y Data se documenta en [backend/README.md](backend/README.md).

@@ -1,6 +1,8 @@
+using Intranet.Entity;
+using Intranet.Service;
+using Intranet.Data;
 using System.Security.Cryptography;
 using System.Text.Json;
-using Intranet.Api.Infrastructure;
 namespace Intranet.Api.Tests;
 public sealed class ProviderAgentJobTests
 {

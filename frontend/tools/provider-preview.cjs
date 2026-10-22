@@ -15,16 +15,16 @@ async function openPreview(page,command,setStage=()=>{}){
   const visible=e=>!!e.getClientRects().length;
   const norm=s=>s.replace(/\s+/g,' ').trim().toUpperCase();
   const rows=[...document.querySelectorAll('tr')].filter(tr=>{const cells=[...tr.cells];return cells.some(c=>norm(c.textContent)==='PO#')&&cells.some(c=>norm(c.textContent)==='ITEM')&&cells.some(c=>norm(c.textContent)==='TOTAL QUANTITY');});
-  const arrows=rows.flatMap(tr=>[...tr.cells[0].querySelectorAll('img,input[type="image"],button,a,[role="button"]')].filter(visible));
-  const leaf=arrows.filter(e=>!arrows.some(other=>other!==e&&e.contains(other)));
-  if(leaf.length!==1)return false;
-  const arrow=leaf[0],label=[arrow.getAttribute('src'),arrow.getAttribute('alt'),arrow.getAttribute('title')].join(' ');
+  if(rows.length!==1)return false;
+  const cell=rows[0].cells[0];
+  const arrow=[...cell.querySelectorAll('img,input[type="image"],button,a,[role="button"],[onclick],svg')].filter(visible).pop()||cell;
+  const label=[arrow.getAttribute('src'),arrow.getAttribute('alt'),arrow.getAttribute('title')].join(' ');
   if(/collapse|(?:^|[/_ -])up(?:[._ -]|$)/i.test(label)||arrow.getAttribute('aria-expanded')==='true')return false;
   arrow.setAttribute('data-vince-expand-all','true');return true;
  });
  if(expandAll){
   await scope.locator('[data-vince-expand-all="true"]').click();
-  await scope.waitForFunction(()=>[...document.querySelectorAll('table')].filter(t=>t.getClientRects().length&&!t.querySelector('table')&&/Quantity To Order/i.test(t.textContent)&&/BARCODE/i.test(t.textContent)).length>=2,null,{timeout:15000});
+  await scope.waitForFunction(()=>[...document.querySelectorAll('table')].filter(t=>t.getClientRects().length&&!t.querySelector('table')&&/Quantity To Order/i.test(t.textContent)&&/BARCODE/i.test(t.textContent)).length>=2,null,{timeout:15000}).catch(()=>{throw new MatchError('Se hizo clic en la flecha del encabezado, pero las tablas no se desplegaron. No se generó el Excel.');});
  }
 
  for(let pass=0;pass<100;pass++){

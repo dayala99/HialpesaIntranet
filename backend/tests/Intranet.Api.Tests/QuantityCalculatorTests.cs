@@ -1,5 +1,6 @@
-using Intranet.Api.Contracts;
-using Intranet.Api.Services;
+using Intranet.Entity;
+using Intranet.Service;
+using Intranet.Data;
 
 namespace Intranet.Api.Tests;
 

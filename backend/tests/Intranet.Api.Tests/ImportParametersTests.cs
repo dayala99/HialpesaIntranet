@@ -1,3 +1,6 @@
+using Intranet.Entity;
+using Intranet.Service;
+using Intranet.Data;
 using Intranet.Api.Controllers;
 using Xunit;
 namespace Intranet.Api.Tests;

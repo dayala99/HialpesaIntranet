@@ -6,7 +6,7 @@ if(!settings.ProviderAgent.SigningPrivateKey){const keys=crypto.generateKeyPairS
 const publicKey=crypto.createPublicKey(settings.ProviderAgent.SigningPrivateKey).export({type:'spki',format:'pem'});
 fs.writeFileSync(path.join(root,'agent/public.pem'),publicKey);
 const output='D:/Programador04/Archivos/Compilados/AgenteVince';fs.mkdirSync(output,{recursive:true});
-for(const file of ['agent.cjs','dialog.ps1','agent-config.json','public.pem','Instalar agente.cmd','Configurar acceso.cmd','LEEME.md'])fs.copyFileSync(path.join(root,'agent',file),path.join(output,file));
+for(const file of ['agent.cjs','process-control.cjs','dialog.ps1','agent-config.json','public.pem','Instalar agente.cmd','Configurar acceso.cmd','LEEME.md'])fs.copyFileSync(path.join(root,'agent',file),path.join(output,file));
 const runtimeTarget=path.join(output,'node.exe');
 const digest=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 if(!fs.existsSync(runtimeTarget)||digest(runtimeTarget)!==digest(process.execPath))fs.copyFileSync(process.execPath,runtimeTarget);

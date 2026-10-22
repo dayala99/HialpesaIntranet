@@ -1,7 +1,7 @@
+using Intranet.Entity;
+using Intranet.Service;
+using Intranet.Data;
 using System.ComponentModel.DataAnnotations;
-using Intranet.Api.Contracts;
-using Intranet.Api.Infrastructure;
-using Intranet.Api.Services;
 
 namespace Intranet.Api.Tests;
 

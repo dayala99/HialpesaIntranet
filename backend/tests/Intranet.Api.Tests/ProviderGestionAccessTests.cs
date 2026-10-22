@@ -1,7 +1,9 @@
+using Intranet.Entity;
+using Intranet.Service;
+using Intranet.Data;
 using System.Security.Claims;
 using Dapper;
 using Intranet.Api.Controllers;
-using Intranet.Api.Infrastructure;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -30,7 +32,7 @@ public sealed class ProviderGestionAccessTests
   var environment=new TestEnvironment();var identity=new GestionIdentity(options,environment);
   Assert.Null(identity.GetReadAllWindowsUser(principal));
   var repository=new AviosRepository(factory,options);var tickets=new ProviderAgentTickets();
-  var controller=new ProviderController(identity,environment,repository,new RegistrationReadRepository(factory,options),configuration,tickets){ControllerContext=new(){HttpContext=new DefaultHttpContext{User=principal}}};
+  var controller=new ProviderController(new ProviderService(identity,environment,repository,new RegistrationReadRepository(factory,options),configuration,tickets,new RequestActor(principal,false,true,false,false,"test"))){ControllerContext=new(){HttpContext=new DefaultHttpContext{User=principal}}};
   controller.Request.Headers["X-Intranet-Provider"]="1";
   var order=await repository.FindOrder("002","350000",code!,default);Assert.NotNull(order);
   var report=await new RegistrationReadRepository(factory,options).Print(order!,[],default);

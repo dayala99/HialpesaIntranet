@@ -1,4 +1,5 @@
-using Intranet.Api.Infrastructure;
+using Intranet.Entity;
+using Intranet.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
