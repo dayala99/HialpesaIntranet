@@ -22,7 +22,7 @@ public sealed class ImportRequest
 }
 public sealed record ImportSource(string SupplierCode,string Supplier,string AnnexType,string Annex,string Currency,string ExistingImport,string SupplierOrigin);
 [ApiController,Route("api/v1/logistica/importaciones")]
-public sealed class ImportsController(GestionConnectionFactory factory,AviosRepository orders,GestionIdentity identity,ILogger<ImportsController> logger):ControllerBase
+public sealed class ImportsController(GestionConnectionFactory factory,AviosRepository orders,GestionIdentity identity,ILogger<ImportsController> logger,Microsoft.Extensions.Options.IOptions<GestionOptions> options):ControllerBase
 {
     private async Task Access(string series,string number,CancellationToken ct)
     {
@@ -37,10 +37,10 @@ public sealed class ImportsController(GestionConnectionFactory factory,AviosRepo
     [HttpGet]
     public async Task<IActionResult> List([FromQuery,Range(1,100000)]int page=1,[FromQuery,MaxLength(70)]string? search=null,CancellationToken ct=default)
     {
-        if(identity.IsDemo)return Ok(new{rows=Array.Empty<object>(),hasMore=false,page});
+        if(identity.IsDemo)return Ok(new{rows=Array.Empty<object>(),hasMore=false,page,totalRows=0,totalPages=1});
         var user=identity.GetUser(User);var windows=identity.GetReadAllWindowsUser(User);
         await using var c=await factory.OpenAsync(ct);
-        var admin=windows is not null && await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT CASE WHEN ORIGINAL_LOGIN()=@Windows AND IS_SRVROLEMEMBER('sysadmin')=1 THEN 1 ELSE 0 END",new{Windows=windows},cancellationToken:ct))==1;
+        var admin=windows is not null; // Read-all permission comes from the authenticated application identity.
         var term=search?.Trim()??"";
         var permission=admin ? "1=1" : "EXISTS(SELECT 1 FROM LG_ORDCOMP o JOIN LG_SEGORDCOMP s ON s.Cod_ClaOrdComp=o.Cod_ClaOrdComp WHERE o.Num_Importacion=i.Num_Importacion AND s.Cod_Usuario=@User)";
         var numeric=term.Length>0 && term.All(char.IsAsciiDigit);
@@ -54,10 +54,12 @@ public sealed class ImportsController(GestionConnectionFactory factory,AviosRepo
             FROM LG_IMPORTACIONES i LEFT JOIN CN_ANEXOSCONTABLES a ON a.Cod_TipAnex=i.Cod_TipAnex AND a.Cod_Anxo=i.Cod_Anxo
             LEFT JOIN LG_ORIGEN_IMPORTACION g ON g.Cod_OrigenImportacion=i.Cod_OrigenImportacion
             WHERE {PERMISSION} AND {FILTER}
-          ) SELECT Number,RegisteredAt,Status,Supplier,Currency,Origin,Series,OrderNumber FROM list WHERE rn>@Offset AND rn<=@End ORDER BY rn OPTION (RECOMPILE)
+          ) SELECT Number,RegisteredAt,Status,Supplier,Currency,Origin,Series,OrderNumber FROM list WHERE rn>@Offset AND rn<=@End ORDER BY rn OPTION (RECOMPILE);
+          SELECT COUNT(*) FROM LG_IMPORTACIONES i LEFT JOIN CN_ANEXOSCONTABLES a ON a.Cod_TipAnex=i.Cod_TipAnex AND a.Cod_Anxo=i.Cod_Anxo LEFT JOIN LG_ORIGEN_IMPORTACION g ON g.Cod_OrigenImportacion=i.Cod_OrigenImportacion WHERE {PERMISSION} AND {FILTER} OPTION (RECOMPILE);
           """;
-        var rows=(await c.QueryAsync(new CommandDefinition(sql.Replace("{PERMISSION}",permission).Replace("{FILTER}",filter),new{User=user,Search=term,Prefix=term+"%",Pattern="%"+term+"%",Series=reference?term[..3]:"",OrderNumber=reference?term[4..]:"",Offset=(page-1)*50,End=page*50+1},commandTimeout:60,cancellationToken:ct))).ToList();
-        return Ok(new{rows=rows.Take(50).Select(x=>new{number=((string)x.Number).Trim(),registeredAt=(DateTime?)x.RegisteredAt,status=((string?)x.Status)?.Trim(),supplier=((string?)x.Supplier)?.Trim(),currency=((string?)x.Currency)?.Trim(),origin=((string?)x.Origin)?.Trim(),series=((string?)x.Series)?.Trim(),orderNumber=((string?)x.OrderNumber)?.Trim()}),hasMore=rows.Count>50,page});
+        using var result=await c.QueryMultipleAsync(new CommandDefinition(sql.Replace("{PERMISSION}",permission).Replace("{FILTER}",filter),new{User=user,Search=term,Prefix=term+"%",Pattern="%"+term+"%",Series=reference?term[..3]:"",OrderNumber=reference?term[4..]:"",Offset=(page-1)*50,End=page*50+1},commandTimeout:60,cancellationToken:ct));
+        var rows=(await result.ReadAsync()).ToList();var totalRows=await result.ReadSingleAsync<int>();var totalPages=Math.Max(1,(int)Math.Ceiling(totalRows/50d));
+        return Ok(new{rows=rows.Take(50).Select(x=>new{number=((string)x.Number).Trim(),registeredAt=(DateTime?)x.RegisteredAt,status=((string?)x.Status)?.Trim(),supplier=((string?)x.Supplier)?.Trim(),currency=((string?)x.Currency)?.Trim(),origin=((string?)x.Origin)?.Trim(),series=((string?)x.Series)?.Trim(),orderNumber=((string?)x.OrderNumber)?.Trim()}),hasMore=page<totalPages,page,totalRows,totalPages});
     }
     [HttpGet("ordenes/{series}/{number}")]
     public async Task<IActionResult> Source([RegularExpression("^[0-9]{3}$")]string series,[RegularExpression("^[0-9]{6}$")]string number,CancellationToken ct)
@@ -87,8 +89,8 @@ public sealed class ImportsController(GestionConnectionFactory factory,AviosRepo
         await Access(series,number,ct);
         if(r.RegisteredAt.Year<2000||r.RegisteredAt.Year>2100)throw new ArgumentException("Revisa la fecha de registro.");
         await using var c=await factory.OpenAsync(ct);
-        // Until import-specific legacy permissions are mapped, writes require the explicitly enabled Windows SQL administrator.
-        if(await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT CASE WHEN ORIGINAL_LOGIN()=@Windows AND IS_SRVROLEMEMBER('sysadmin')=1 THEN 1 ELSE 0 END",new{Windows=User.Identity!.Name},cancellationToken:ct))!=1)throw new UnauthorizedAccessException();
+        // Global application write access is explicitly configured for authenticated Gestion users.
+        if(!options.Value.AllowAllAuthenticatedWrites && await c.ExecuteScalarAsync<int>(new CommandDefinition("SELECT CASE WHEN ORIGINAL_LOGIN()=@Windows AND IS_SRVROLEMEMBER('sysadmin')=1 THEN 1 ELSE 0 END",new{Windows=User.Identity!.Name},cancellationToken:ct))!=1)throw new UnauthorizedAccessException();
         await using var t=await c.BeginTransactionAsync(ct);
         try
         {
@@ -126,4 +128,7 @@ public static class ImportParameters
         foreach(var prop in values.GetType().GetProperties())p.Add(prop.Name,prop.GetValue(values));return p;
     }
 }
+
+
+
 

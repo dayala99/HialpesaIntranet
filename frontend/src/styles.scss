@@ -20,3 +20,22 @@
 
 
 button .mat-icon,a .mat-icon{vertical-align:middle;flex-shrink:0;width:20px;height:20px;font-size:20px;line-height:20px}button .mat-icon{pointer-events:none}.sidebar nav .mat-icon{width:20px;height:20px;font-size:20px;flex-shrink:0}.sidebar .nav-chevron{margin-left:auto}.empty-symbol.mat-icon{width:40px;height:40px;font-size:40px;line-height:40px}
+
+/* Shared intranet dialog theme: applies to every Angular Material popup. */
+.cdk-overlay-backdrop.cdk-overlay-dark-backdrop{background:rgba(17,43,39,.46);backdrop-filter:blur(3px)}
+.mat-mdc-dialog-container{--mdc-dialog-container-color:#fff;--mdc-dialog-container-shape:18px;--mdc-dialog-subhead-color:var(--text);--mdc-dialog-supporting-text-color:#627773;--mdc-dialog-subhead-font:Inter,'Segoe UI',Arial,sans-serif;--mdc-dialog-supporting-text-font:Inter,'Segoe UI',Arial,sans-serif}
+.mat-mdc-dialog-container .mdc-dialog__surface{border:1px solid #d9e5df;border-top:5px solid var(--accent);border-radius:18px;box-shadow:0 24px 70px #102e3440;overflow:hidden}
+.mat-mdc-dialog-container .mat-mdc-dialog-title{display:flex;align-items:center;gap:10px;margin:0;padding:25px 28px 16px;font-family:inherit;font-size:20px;font-weight:600;line-height:1.35;letter-spacing:-.4px;color:var(--text)}
+.mat-mdc-dialog-container .mat-mdc-dialog-title::before{display:none}
+.mat-mdc-dialog-title .mat-icon{color:var(--accent);flex-shrink:0}
+.mat-mdc-dialog-container .mat-mdc-dialog-content{padding:0 28px 25px;font-family:inherit;color:#627773;font-size:13px;line-height:1.75;overflow-wrap:anywhere;max-height:65vh}
+.mat-mdc-dialog-content p+p{margin-top:10px}
+.mat-mdc-dialog-container .mat-mdc-dialog-actions{padding:17px 28px;gap:10px;min-height:76px;background:#f5f8f6;border-top:1px solid var(--line)}
+.mat-mdc-dialog-actions button,.mat-mdc-dialog-actions .button{margin:0!important;border-radius:8px;min-height:42px;padding:10px 18px;font-size:12px}
+.mat-mdc-dialog-actions .primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 2px 4px #143e2b12}
+.mat-mdc-dialog-content .po-options{gap:9px;padding:3px}
+.mat-mdc-dialog-content .po-options button{border:1px solid #d8e5df;background:#f6faf8;color:var(--accent);font-size:13px;font-weight:600;border-radius:9px;min-height:46px;padding:12px 16px;justify-content:space-between}
+
+.mat-mdc-dialog-content .po-options button:hover{background:#e8f2ed;border-color:#95b8a8}
+@media(max-width:540px){.mat-mdc-dialog-container .mat-mdc-dialog-title{padding:22px 20px 14px;font-size:19px}.mat-mdc-dialog-container .mat-mdc-dialog-content{padding:0 20px 22px}.mat-mdc-dialog-container .mat-mdc-dialog-actions{padding:15px 20px;flex-wrap:wrap}.mat-mdc-dialog-actions button,.mat-mdc-dialog-actions .button{flex:1;min-height:44px}}
+

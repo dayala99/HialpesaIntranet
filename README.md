@@ -23,7 +23,7 @@ Guía de pruebas y alcance: [docs/pruebas-registro-oc.md](docs/pruebas-registro-
 
 ## Arranque local
 
-Requiere SDK .NET 8.0.426 (global.json), Node.js 22 y npm.
+Requiere SDK .NET 10.0.402 (global.json), Node.js 22 y npm.
 
 Terminal 1 desde la raíz:
 

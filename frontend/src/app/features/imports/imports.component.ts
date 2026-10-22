@@ -21,9 +21,9 @@ export class ImportsComponent {
  form={itemType:'',origin:'',shipment:'',country:'',area:'05',registeredAt:[new Date().getFullYear(),String(new Date().getMonth()+1).padStart(2,'0'),String(new Date().getDate()).padStart(2,'0')].join('-'),guideDate:null as string|null,paymentDate:null as string|null,dueDate:null as string|null,guide:'',observations:''};
  registrationOpen=!!this.route.snapshot.queryParamMap.get('number');
  rows:{number:string;registeredAt:string;status:string;supplier:string;currency:string;origin:string;series:string;orderNumber:string}[]=[];
- listSearch='';listPage=1;hasMore=false;listBusy=false;listError='';
+ listSearch='';listPage=1;totalPages=1;hasMore=false;listBusy=false;listError='';
  private destroyRef=inject(DestroyRef);private listRequests=new Subject<{page:number;search:string}>();
- ngOnInit(){this.listRequests.pipe(switchMap(q=>timer(300).pipe(switchMap(()=>this.http.get<{rows:ImportsComponent['rows'];page:number;hasMore:boolean}>(this.base,{params:q,withCredentials:true})),catchError(e=>{this.listError=apiError(e);return of(null);}))),takeUntilDestroyed(this.destroyRef)).subscribe(r=>{this.listBusy=false;if(r){this.rows=r.rows;this.listPage=r.page;this.hasMore=r.hasMore;}});if(!this.registrationOpen)this.loadList();}
+ ngOnInit(){this.listRequests.pipe(switchMap(q=>timer(300).pipe(switchMap(()=>this.http.get<{rows:ImportsComponent['rows'];page:number;hasMore:boolean;totalPages:number;totalRows:number}>(this.base,{params:q,withCredentials:true})),catchError(e=>{this.listError=apiError(e);return of(null);}))),takeUntilDestroyed(this.destroyRef)).subscribe(r=>{this.listBusy=false;if(r){this.rows=r.rows;this.listPage=r.page;this.totalPages=r.totalPages??1;this.hasMore=r.hasMore;}});if(!this.registrationOpen)this.loadList();}
  loadList(page=1){this.listBusy=true;this.listError='';this.rows=[];this.listRequests.next({page,search:this.listSearch.trim()});}
  openRegistration(){this.source=null;this.number='';this.error='';this.success='';this.review=false;this.uncertain=false;this.registrationOpen=true;}
  backToList(){this.registrationOpen=false;this.source=null;this.error='';this.loadList(this.listPage);}
@@ -34,3 +34,4 @@ export class ImportsComponent {
  get blocked(){return !this.source||!this.automatic||!this.validAnnex||this.source.supplierOrigin!=='E'||!!(this.source.existingImport&&this.source.existingImport!=='0')||!this.session.current()?.canWriteDatabase||this.uncertain;}
  save(){if(this.busy||this.blocked||!this.review)return;this.busy=true;this.error='';this.http.post<{number:string}>(`${this.base}/ordenes/${this.loadedSeries}/${this.loadedNumber}`,this.form,{withCredentials:true,headers:{'X-Intranet-Write':'1'}}).subscribe({next:r=>{this.success='Importación '+r.number+' creada y asociada a la OC '+this.loadedSeries+'-'+this.loadedNumber;this.source!.existingImport=r.number;this.review=false;this.busy=false;this.registrationOpen=false;this.loadList();},error:e=>{this.error=apiError(e);this.uncertain=true;this.review=false;this.busy=false;}});}
 }
+

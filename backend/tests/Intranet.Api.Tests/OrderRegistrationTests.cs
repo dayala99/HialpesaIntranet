@@ -12,10 +12,55 @@ public sealed class OrderRegistrationTests
     private static AddOrderDetailsRequest AddRequest()=>new(){ProductionOrder="J2453",ItemCode="PT000574",RequirementKeys=["key"],UnitPrice=3.25m};
     private static CreateOrderRequest CreateRequest()=>new(){SupplierCode="000000000281",ConditionCode="001",DiscountCode="001",CurrencyCode="USD",DeliveryLocationCode="001",CostCenterCode="001",ManufacturingGroup="VNC-001",DeliveryStart=DateTime.Today,DeliveryEnd=DateTime.Today.AddDays(3)};
 
+    [Fact] public async Task ExistingOrderCanAddDistinctGroupsWithoutCreatingHeader()
+    {
+        var fake=new FakeSession();
+        await new OrderRegistrationService(new FakeGateway(fake)).AddGroups(Reference,new[]{"VNC-001","VNC-002","vnc-001"},"tester","DOMAIN\\tester",default);
+        Assert.Equal(2,fake.Events.Count(e=>e=="group"));Assert.DoesNotContain("header",fake.Events);Assert.True(fake.Committed);
+    }
+    [Fact] public async Task ExistingGroupsCanBeRemovedAndAddedInOneCommit()
+    {
+        var fake=new FakeSession();
+        await new OrderRegistrationService(new FakeGateway(fake)).ChangeGroups(Reference,new[]{"VNC-002"},new[]{"VNC-001"},"tester","DOMAIN\\tester",default);
+        Assert.Contains("remove-group",fake.Events);Assert.Contains("group",fake.Events);Assert.DoesNotContain("header",fake.Events);Assert.True(fake.Committed);
+    }
+    [Fact] public async Task UpdateExistingHeaderDoesNotCreateAnotherOrderOrChangeGroups()
+    {
+        var fake=new FakeSession();await new OrderRegistrationService(new FakeGateway(fake)).Update(Reference,new UpdateOrderRequest(),"tester","DOMAIN\\tester",default);
+        Assert.Contains("update",fake.Events);Assert.DoesNotContain("header",fake.Events);Assert.DoesNotContain("group",fake.Events);Assert.True(fake.Committed);
+    }
+    [Fact] public async Task ItemUpdateAndDeleteDoNotCreateHeaderOrModifyGroups()
+    {
+        foreach(var request in new UpdateOrderItemRequest?[]{new(){Purchased=1095,UnitPrice=2},null}){
+          var fake=new FakeSession();await new OrderRegistrationService(new FakeGateway(fake)).ChangeItem(Reference,"001",request,"tester","DOMAIN\\tester",default);
+          Assert.Contains(request is null?"delete-item":"update-item",fake.Events);Assert.DoesNotContain("header",fake.Events);Assert.DoesNotContain("group",fake.Events);Assert.True(fake.Committed);
+        }
+    }
+    [Fact] public async Task RemovingRequirementLinksUsesDedicatedOperationAndCommits()
+    {
+        var fake=new FakeSession();await new OrderRegistrationService(new FakeGateway(fake)).RemoveRequirements(Reference,"001",new[]{"key1","key2"},"tester","DOMAIN\\tester",default);
+        Assert.Contains("remove-requirements",fake.Events);Assert.DoesNotContain("delete-item",fake.Events);Assert.DoesNotContain("header",fake.Events);Assert.True(fake.Committed);
+    }
+    [Fact] public async Task DuplicateRequirementRemovalIsRejected()
+    {
+        var fake=new FakeSession();await Assert.ThrowsAsync<ArgumentException>(()=>new OrderRegistrationService(new FakeGateway(fake)).RemoveRequirements(Reference,"001",new[]{"key","key"},"tester","DOMAIN\\tester",default));Assert.False(fake.Committed);
+    }
+    [Fact] public async Task HeaderCanBeCreatedWithoutManufacturingGroups()
+    {
+        var fake=new FakeSession();var request=CreateRequest();request.ManufacturingGroup="";
+        await new OrderRegistrationService(new FakeGateway(fake)).Create(request,"tester","DOMAIN\\tester",default);
+        Assert.Equal(new[]{"header","commit","dispose"},fake.Events);
+    }
     [Fact] public async Task HeaderAndGroupAreCommittedTogether()
     {
         var fake=new FakeSession();var result=await new OrderRegistrationService(new FakeGateway(fake)).Create(CreateRequest(),"tester","DOMAIN\\tester",default);
         Assert.Equal(Reference,result);Assert.Equal(new[]{"header","group","commit","dispose"},fake.Events);
+    }
+    [Fact] public async Task MultipleGroupsAreLinkedBeforeCommitWithoutDuplicates()
+    {
+        var fake=new FakeSession();var request=CreateRequest();request.AdditionalManufacturingGroups=["VNC-002","VNC-003","VNC-002","vnc-001"];
+        await new OrderRegistrationService(new FakeGateway(fake)).Create(request,"tester","DOMAIN\\tester",default);
+        Assert.Equal(new[]{"header","group","group","group","commit","dispose"},fake.Events);
     }
     [Fact] public async Task GroupFailureDisposesWithoutCommit()
     {
@@ -86,6 +131,10 @@ public sealed class OrderRegistrationTests
         public string Status="P";
         public PendingRequirement CandidateRow=Candidate();
         public Task<OrderReference> CreateHeader(CreateOrderRequest request,CancellationToken ct){Events.Add("header");return Task.FromResult(Reference);}
+        public Task RemoveRequirements(OrderReference order,string sequence,IReadOnlyList<string> keys,CancellationToken ct){Events.Add("remove-requirements");return Task.CompletedTask;}
+        public Task ChangeItem(OrderReference order,string sequence,UpdateOrderItemRequest? request,CancellationToken ct){Events.Add(request is null?"delete-item":"update-item");return Task.CompletedTask;}
+        public Task UpdateHeader(OrderReference order,UpdateOrderRequest request,CancellationToken ct){Events.Add("update");return Task.CompletedTask;}
+        public Task RemoveGroup(OrderReference order,string group,CancellationToken ct){Events.Add("remove-group");return Task.CompletedTask;}
         public Task LinkGroup(OrderReference order,string group,CancellationToken ct){Events.Add("group");if(FailGroup)throw new InvalidOperationException("fake group error");return Task.CompletedTask;}
         public Task<OrderRegistrationHeader> LockOrder(OrderReference order,CancellationToken ct){Events.Add("lock");return Task.FromResult(new OrderRegistrationHeader(order.Series,order.Number,"P",Status,"01","VNC-001"));}
         public Task<IReadOnlyList<PendingRequirement>> Pending(OrderRegistrationHeader order,string op,string item,CancellationToken ct)=>Task.FromResult<IReadOnlyList<PendingRequirement>>([CandidateRow]);

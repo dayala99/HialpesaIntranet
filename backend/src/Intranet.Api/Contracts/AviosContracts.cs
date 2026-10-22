@@ -4,8 +4,8 @@ namespace Intranet.Api.Contracts;
 
 public sealed record SessionResponse(string DisplayName, string GestionUser, bool Demo, bool CanWriteDatabase);
 public sealed record PurchaseOrder(string Series, string Number, string Supplier, string Status, string Class, string Client, DateTime? CreatedAt);
-public sealed record OrderItem(string Sequence, string ItemCode, string Description, string Size, string Style, decimal Required, decimal Purchased, decimal Received);
-public sealed record OrderDetail(PurchaseOrder Order, IReadOnlyList<OrderItem> Items);
+public sealed record OrderItem(string Sequence, string ItemCode, string Description, string Size, string Style, decimal Required, decimal Purchased, decimal Received, string ProductionOrders = "");
+public sealed record OrderDetail(PurchaseOrder Order, IReadOnlyList<OrderItem> Items, IReadOnlyList<LookupOption>? ManufacturingGroups = null);
 public sealed record Requirement(string Factory, string ProductionOrder, string PresentationCode, string Presentation, string Component, string ItemCode, string Style, string Color, string Size, string Destination, decimal Quantity);
 
 public sealed class MatrixRow
@@ -32,3 +32,10 @@ public sealed class PreviewRequest
 }
 public sealed record CalculatedRow(MatrixRow Source, string ItemCode, string Article, int Multiple, decimal Required, decimal Purchase, decimal Extra);
 public sealed record PreviewResponse(IReadOnlyList<CalculatedRow> Rows, decimal BaseUnits, decimal PurchaseUnits, decimal ExtraUnits);
+
+public sealed record PoSummary(string Po, string ClientCode, string? Client, string? Description, DateTime? CreatedAt);
+
+public sealed record PoDetailLine(string Lot, string Style, string? Description, string ColorCode, string? Color, string Size, decimal Required, decimal Shipped, string? Upc)
+{
+    public decimal Purchased => Intranet.Api.Services.QuantityCalculator.RoundRequiredQuantity(Required);
+}

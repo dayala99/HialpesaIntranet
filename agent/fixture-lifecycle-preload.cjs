@@ -1,0 +1,5 @@
+const Module=require('node:module'),fs=require('node:fs'),path=require('node:path');const load=Module._load,read=fs.readFileSync,cp=require('node:child_process');let pids={};
+fs.readFileSync=function(file,...args){if(String(file)===path.join(__dirname,'public.pem'))return read.call(this,process.env.VINCE_TEST_PUBLIC);return read.call(this,file,...args)};
+Module._load=function(name,...args){if(name==='node:child_process')return{spawnSync(command,parameters){return{status:0,stdout:parameters.join(' ').includes('ProtectedData]::Unprotect')?JSON.stringify({Username:'test-user',Password:'test-only',LoginUrl:'https://webservices.averydennison.com/specstar/login.aspx'}):'Yes'}},spawn(command,parameters,options){let child;
+if(command==='powershell.exe'){child=cp.spawn(process.execPath,['-e','setInterval(()=>{},1000)'],options);pids.notice=child.pid;}else{child=cp.spawn(process.execPath,[path.join(__dirname,'fixture-lifecycle-worker.cjs')],options);pids.worker=child.pid;}
+fs.writeFileSync(process.env.VINCE_TEST_PIDS,JSON.stringify(pids));return child;}};return load.call(this,name,...args)};

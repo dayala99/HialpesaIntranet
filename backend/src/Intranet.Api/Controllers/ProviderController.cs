@@ -9,7 +9,7 @@ using Intranet.Api.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 namespace Intranet.Api.Controllers;
 [ApiController,Route("api/v1/proveedor")]
-public sealed class ProviderController(GestionIdentity identity,IWebHostEnvironment environment,AviosRepository orders,RegistrationReadRepository reads):ControllerBase
+public sealed class ProviderController(GestionIdentity identity,IWebHostEnvironment environment,AviosRepository orders,RegistrationReadRepository reads,IConfiguration configuration,ProviderAgentTickets tickets):ControllerBase
 {
  public sealed class ColorConfirmation {
   [Required,MaxLength(80)]public string Style{get;set;}="";
@@ -31,6 +31,61 @@ public sealed class ProviderController(GestionIdentity identity,IWebHostEnvironm
  }
  [HttpGet("ordenes/{series}/{number}/pos")]
  public async Task<IActionResult> Pos([RegularExpression("^[0-9]{3}$")]string series,[RegularExpression("^[0-9]{6}$")]string number,CancellationToken ct)=>Ok(await PurchaseOrders(series,number,ct));
+ [HttpPost("preparar-llenado")]
+ public async Task<IActionResult> Prepare([FromBody]Selection selection,CancellationToken ct)
+ {
+  if(User.Identity?.IsAuthenticated!=true || Request.Headers["X-Intranet-Provider"]!="1")throw new UnauthorizedAccessException();
+  var order=await orders.FindOrder(selection.Series,selection.Number,identity.GetUser(User),ct,identity.GetReadAllWindowsUser(User));
+  if(order is not {Class:"01"})throw new UnauthorizedAccessException();
+  var report=await reads.Print(order,Array.Empty<Intranet.Api.Contracts.OrderItem>(),ct);
+  if(!report.ReportRows.Any(row=>Regex.Matches(row.Combination,@"\bPO\s*-\s*[0-9]+\b",RegexOptions.IgnoreCase).Any(m=>Regex.Replace(m.Value,@"\s+","").Equals(selection.Po,StringComparison.OrdinalIgnoreCase))))throw new ArgumentException("El PO seleccionado no pertenece a la OC.");
+  var key=configuration["ProviderAgent:SigningPrivateKey"];
+  if(string.IsNullOrWhiteSpace(key))return BadRequest(new{title="Falta configurar la firma del agente VINCE en el backend."});
+  Response.Headers.CacheControl="no-store";
+  return File(ProviderAgentJob.Create(new{schema="hialpesa-vince/1",issuedAt=DateTimeOffset.UtcNow,expiresAt=DateTimeOffset.UtcNow.AddMinutes(30),series=selection.Series,number=selection.Number,po=selection.Po,rows=report.ReportRows},key),"application/octet-stream",selection.Po+".hialpesa-vince");
+ }
+ public sealed class PoSelection {
+  [Required,RegularExpression("^PO-[0-9]{1,20}$")]public string Po{get;set;}="";
+  [Required,StringLength(20)]public string ClientCode{get;set;}="";
+ }
+ [HttpPost("preparar-apertura-po")]
+ public async Task<IActionResult> PreparePoLaunch([FromBody]PoSelection selection,CancellationToken ct)
+ {
+  if(User.Identity?.IsAuthenticated!=true||Request.Headers["X-Intranet-Provider"]!="1")throw new UnauthorizedAccessException();
+  identity.GetUser(User);
+  if(!await orders.PoExists(selection.Po,selection.ClientCode,ct))return NotFound(new{title="La PO no existe para el cliente seleccionado."});
+  var key=configuration["ProviderAgent:SigningPrivateKey"];
+  if(string.IsNullOrWhiteSpace(key))return BadRequest(new{title="Falta configurar la firma del agente VINCE."});
+  var details=await orders.PoDetails(selection.Po,selection.ClientCode,ct);
+  var rows=Intranet.Api.Services.PoQuantitySource.Create(selection.Po,details);
+  var data=ProviderAgentJob.Create(new{schema="hialpesa-vince/1",issuedAt=DateTimeOffset.UtcNow,expiresAt=DateTimeOffset.UtcNow.AddMinutes(30),mode="po-required",po=selection.Po,clientCode=selection.ClientCode,rows},key);
+  var ticket=tickets.Issue(data);Response.Headers.CacheControl="no-store";
+  return Ok(new{token=ticket.Token,expiresAt=ticket.ExpiresAt});
+ }
+ public sealed class AgentTicket {[Required,RegularExpression("^[A-F0-9]{64}$")]public string Token{get;set;}="";}
+ [HttpPost("preparar-apertura")]
+ public async Task<IActionResult> PrepareLaunch([FromBody]Selection selection,CancellationToken ct)
+ {
+  var prepared=await Prepare(selection,ct);
+  if(prepared is not FileContentResult file)return prepared;
+  var ticket=tickets.Issue(file.FileContents);
+  return Ok(new{token=ticket.Token,expiresAt=ticket.ExpiresAt});
+ }
+ [Microsoft.AspNetCore.Authorization.AllowAnonymous,HttpPost("recuperar-llenado")]
+ public IActionResult Redeem([FromBody]AgentTicket ticket)
+ {
+  Response.Headers.CacheControl="no-store";
+  if(Request.Headers["X-Intranet-Agent"]!="1")return BadRequest();
+  var data=tickets.Redeem(ticket.Token);
+  return data is null?StatusCode(410,new{title="La apertura venció o ya fue utilizada. Selecciona nuevamente el PO en la intranet."}):File(data,"application/json");
+ }
+ [HttpPost("estado-apertura")]
+ public IActionResult LaunchStatus([FromBody]AgentTicket ticket)
+ {
+  if(User.Identity?.IsAuthenticated!=true||Request.Headers["X-Intranet-Provider"]!="1")throw new UnauthorizedAccessException();
+  identity.GetUser(User);Response.Headers.CacheControl="no-store";
+  return Ok(new{received=tickets.WasReceived(ticket.Token)});
+ }
  private sealed record ProviderSecret(string Username,string Password,string LoginUrl);
  private IActionResult? Confirmation(string? response){
   try{
@@ -63,12 +118,12 @@ public sealed class ProviderController(GestionIdentity identity,IWebHostEnvironm
  [HttpPost("iniciar-sesion")]
  public async Task<IActionResult> Login([FromBody]Selection selection,CancellationToken ct)
  {
-   if(!environment.IsDevelopment() || HttpContext.Connection.RemoteIpAddress is not {} ip || !IPAddress.IsLoopback(ip) || identity.GetReadAllWindowsUser(User) is null || Request.Headers["X-Intranet-Provider"]!="1")throw new UnauthorizedAccessException();
+   if(!environment.IsDevelopment() || HttpContext.Connection.RemoteIpAddress is not {} ip || !IPAddress.IsLoopback(ip) || User.Identity?.IsAuthenticated!=true || Request.Headers["X-Intranet-Provider"]!="1")throw new UnauthorizedAccessException();
    identity.GetUser(User);
    var selectedOrder=await orders.FindOrder(selection.Series,selection.Number,identity.GetUser(User),ct,identity.GetReadAllWindowsUser(User));
    if(selectedOrder is not {Class:"01"})throw new UnauthorizedAccessException();
    var report=await reads.Print(selectedOrder,Array.Empty<Intranet.Api.Contracts.OrderItem>(),ct);
-   var payload=JsonSerializer.Serialize(new{po=selection.Po,rows=report.ReportRows,colorConfirmations=selection.ColorConfirmations},new JsonSerializerOptions(JsonSerializerDefaults.Web));
+   var payload=JsonSerializer.Serialize(new{po=selection.Po,series=selection.Series,number=selection.Number,rows=report.ReportRows,colorConfirmations=selection.ColorConfirmations},new JsonSerializerOptions(JsonSerializerDefaults.Web));
    if(!report.ReportRows.Any(row=>Regex.Matches(row.Combination,@"\bPO\s*-\s*[0-9]+\b",RegexOptions.IgnoreCase).Any(m=>Regex.Replace(m.Value,@"\s+","").Equals(selection.Po,StringComparison.OrdinalIgnoreCase))))throw new ArgumentException("El PO seleccionado no pertenece a la OC.");
    await Gate.WaitAsync(ct);
    try {
@@ -116,3 +171,7 @@ public sealed class ProviderController(GestionIdentity identity,IWebHostEnvironm
    }finally{Gate.Release();}
  }
 }
+
+
+
+

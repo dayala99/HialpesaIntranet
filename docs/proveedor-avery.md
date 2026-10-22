@@ -1,4 +1,19 @@
-# Acceso local al proveedor Avery Dennison
+# Acceso al proveedor Avery Dennison
+
+## Uso publicado en IIS con agente Windows
+
+El frontend publicado prepara la apertura con `POST /api/v1/proveedor/preparar-apertura`, autenticado y con el permiso administrativo de lectura. El backend valida la OC/PO y firma los datos del reporte. Devuelve un token aleatorio de 256 bits, de un solo uso, con vigencia de dos minutos. Los tickets pendientes se conservan en memoria con límite de 100 y desaparecen al reiniciar el proceso.
+
+La confirmación de la intranet ofrece un enlace `hialpesa-vince://run` que Windows abre con el agente instalado. El agente admite solamente servidores exactos de agent-config.json y recupera por POST `/api/v1/proveedor/recuperar-llenado`, con token y cabecera X-Intranet-Agent. Esta recuperación permite acceso anónimo porque usa el token como autorización temporal; nunca devuelve datos sin token válido. No hay redirecciones ni credenciales SQL/Avery en el enlace. El token se consume atómicamente; reutilización, caducidad o reciclado del proceso devuelven 410.
+
+El agente verifica la firma con public.pem y la vigencia de los datos antes de pedir confirmación de la OC. Abre Chrome bajo el usuario Windows interactivo con su acceso Avery cifrado por DPAPI CurrentUser. Conserva las validaciones, confirmaciones de color y cantidades del worker de desarrollo. El mensaje final es solamente: Cierra el navegador cuando termines. Los resultados se muestran localmente.
+
+Instalación/actualización: agent/LEEME.md. Para habilitar el protocolo hay que ejecutar nuevamente Instalar agente.cmd en las PC que tenían la versión de archivos descargados. El paquete incluye Node/Playwright y requiere Chrome. La configuración fija la URL API autorizada; si cambia el dominio, puerto o HTTPS, actualizar agent-config.json. La clave privada permanece exclusivamente en ProviderAgent:SigningPrivateKey del backend; public.pem viaja con el agente. Mantener ambas entre publicaciones.
+
+Pruebas: node agent/test.cjs; node agent/test-protocol.cjs; node agent/test-install.cjs; node agent/test-orchestration.cjs; node agent/test-api.cjs (contraseña de prueba por variable de entorno). En frontend, node tests/provider-agent-launch.cjs tras el build de producción. Se verifica enlace y confirmación sin descargas, firma, destinos autorizados, rechazo de PO ajeno, expiración y consumo único. Los tests de instalación y orquestación son simulados; no modifican el registro ni ingresan al proveedor. La prueba API usa datos reales sin abrir Avery. La ruta anterior preparar-llenado y la asociación de archivos se mantienen por compatibilidad.
+
+La ruta `/iniciar-sesion` descrita a continuación conserva su modo de desarrollo y loopback; no se utiliza desde el frontend publicado.
+
 
 
 
@@ -30,3 +45,5 @@ Equivalencias confirmadas: tools/provider-color-aliases.json contiene BURN HENNA
 Regla decimal de calculo: si la parte entera termina en 0 o 5 y la fraccion es menor que 0.50, se conserva esa parte entera. Desde 0.50 sube al siguiente multiplo de 5. Las demas terminaciones suben al siguiente multiplo de 5. Ejemplos: 130.49 -> 130; 130.50 -> 135; 155.40 -> 155; 155.50 -> 160. Se aplica en la previsualizacion y en nuevos detalles registrados desde la intranet. El proveedor y el Excel de OC siguen usando Purchased registrado, sin recalcular OC existentes.
 
 Confirmacion de similitudes: si el nombre completo del proveedor aparece como frase dentro de un unico color de Gestion para el mismo estilo, se propone una equivalencia. No se usa coincidencia aproximada de letras. Toda la prevalidacion (incluidas talla, NP, articulo y relacion PO) se ejecuta antes de devolver confirmation-required; no se llena ningun campo. El usuario ve ambas descripciones, estilo y codigo de color y puede elegir Si o No. Si reenvia las equivalencias unicamente para esa operacion, el worker las compara de nuevo con candidatos obtenidos de los datos actuales. No o Escape no hacen una segunda solicitud. No se persisten estas aprobaciones ni se modifica la base de datos. Pruebas UI aisladas: node tests/provider-color-confirmation.cjs.
+
+

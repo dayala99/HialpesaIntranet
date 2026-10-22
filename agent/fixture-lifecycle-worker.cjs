@@ -1,0 +1,2 @@
+const {chromium}=require('../frontend/node_modules/playwright');const {bindBrowserLifetime}=require('../frontend/tools/provider-lifecycle.cjs');
+(async()=>{const browser=await chromium.launch({channel:'chrome',headless:true});const context=await browser.newContext();bindBrowserLifetime(browser,context,()=>process.exit(0));const page=await context.newPage();await page.goto('data:text/html,local lifecycle test');console.log(JSON.stringify({status:'signed-in'}));setTimeout(()=>page.close(),1800);})().catch(()=>process.exit(1));

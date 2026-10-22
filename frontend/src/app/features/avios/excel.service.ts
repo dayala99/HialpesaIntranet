@@ -3,11 +3,16 @@ import { MatrixRow, Preview, PrintOrder } from '../../core/models';
 
 @Injectable({ providedIn: 'root' })
 export class ExcelService {
+  private async createWorkbook(){
+    const excel=await import('exceljs');
+    const Workbook=excel.Workbook ?? (excel as unknown as {default?:typeof excel}).default?.Workbook;
+    if(!Workbook)throw new Error('No se pudo cargar la herramienta de Excel. Recarga la página e inténtalo nuevamente.');
+    return new Workbook();
+  }
   async open(file: File) {
     if (!/\.xlsx$/i.test(file.name)) throw Error('Selecciona un archivo Excel .xlsx.');
     if (file.size > 5 * 1024 * 1024) throw Error('El archivo debe pesar como máximo 5 MB.');
-    const { Workbook } = await import('exceljs');
-    const workbook = new Workbook();
+    const workbook = await this.createWorkbook();
     await workbook.xlsx.load(await file.arrayBuffer());
     if (!workbook.worksheets.length) throw Error('El archivo no contiene hojas.');
     return workbook;
@@ -43,15 +48,13 @@ export class ExcelService {
     return rows;
   }
   async template() {
-    const { Workbook } = await import('exceljs');
-    const workbook = new Workbook();
+    const workbook = await this.createWorkbook();
     const sheet = workbook.addWorksheet('Matriz');
     sheet.addRows([['NP','Estilo','Color','Talla','Cantidad','Fabrica','Presentacion','Destino'],['NP-EJEMPLO','EST-001','Negro','S',21,'001','1','']]);
     await this.download(workbook, 'plantilla-matriz-avios.xlsx');
   }
   async export(preview: Preview, quality: boolean) {
-    const { Workbook } = await import('exceljs');
-    const workbook = new Workbook();
+    const workbook = await this.createWorkbook();
     const sheet = workbook.addWorksheet(quality ? 'Revision de cantidades' : 'Datos de compra');
     const headers = ['Fabrica','NP','Estilo','Presentacion','Color','Talla','Destino','Codigo articulo','Articulo','Cantidad base','Multiplo','Cantidad compra','Ajuste por redondeo'];
     if (quality) headers.push('Revision','Observaciones');
@@ -64,8 +67,7 @@ export class ExcelService {
     await this.download(workbook, `${quality ? 'calidad-cantidades' : 'datos-compra'}-${new Date().toISOString().slice(0,10)}.xlsx`);
   }
   async purchaseOrder(oc:PrintOrder){
-    const { Workbook }=await import('exceljs');
-    const book=new Workbook();book.creator='Hialpesa Intranet';
+    const book=await this.createWorkbook();book.creator='Hialpesa Intranet';
     const sheet=book.addWorksheet('Detalle OC');
     sheet.columns=[60,65,18,24,20,22].map(width=>({width}));
     sheet.mergeCells('A1:F1');
@@ -104,3 +106,4 @@ export class ExcelService {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 }
+

@@ -1,1 +1,3 @@
-export const environment = { apiBaseUrl: '/BackEnd/api/v1' };
+export const environment = { apiBaseUrl: '/BackEnd/api/v1', providerAgent: true };
+
+

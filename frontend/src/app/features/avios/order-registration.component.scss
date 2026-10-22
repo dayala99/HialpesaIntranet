@@ -2,3 +2,9 @@
 
 .group-combo{position:relative;margin:22px 0}.group-combo>label{display:block;margin-bottom:8px}.combo-control{display:flex;align-items:stretch}.combo-control input{flex:1;min-width:0;border-radius:6px 0 0 6px}.combo-control>button{border-radius:0 6px 6px 0;min-width:44px}.combo-options{position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #cfdbd7;box-shadow:0 8px 20px #102d3220;border-radius:6px;z-index:10;max-height:300px;overflow:auto}.combo-options [role=option]{display:flex;width:100%;gap:12px;text-align:left;border:0;border-radius:0;padding:12px;white-space:normal;overflow-wrap:anywhere}.combo-options [role=option]:hover,.combo-options .highlighted{background:#e8f3ef}.combo-options [role=option] strong{flex-shrink:0}.combo-options p,.combo-options>small{display:block;padding:10px;margin:0}.group-combo>small{margin-top:8px}
 .combo-options button[role=option]{justify-content:flex-start;text-align:left}
+
+.manufacturing-group-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}.manufacturing-group-heading button{font-size:12px;padding:8px 12px}
+
+.manufacturing-group-search{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}.manufacturing-group-search label{flex:1;min-width:140px}.manufacturing-group-search button{flex:none}
+
+.selected-manufacturing-groups{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.selected-manufacturing-groups>span{background:#edf5f1;color:#22594e;border:1px solid #d2e3db;border-radius:8px;padding:6px 10px;display:flex;align-items:center;gap:8px}.selected-manufacturing-groups button{padding:0 4px;min-height:24px;border:0;background:transparent;font-size:18px}

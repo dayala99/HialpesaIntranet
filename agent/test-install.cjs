@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),Module=require('node:module'),fs=require('node:fs');
+const original=Module._load,exists=fs.existsSync,argv=process.argv,calls=[];
+Module._load=function(name,...rest){if(name==='node:child_process')return{spawnSync(command,args){calls.push({command,args});return{status:0,stdout:'OK'}}};return original.call(this,name,...rest)};
+fs.existsSync=function(file){return String(file).endsWith('avery.protected')?true:exists.call(this,file)};
+(async()=>{try{process.argv=['node','agent','--install'];await require('./agent.cjs').main();
+const protocol=calls.find(c=>c.command==='reg.exe'&&c.args.includes('HKCU\\Software\\Classes\\hialpesa-vince'));assert(protocol);
+const marker=calls.find(c=>c.command==='reg.exe'&&c.args.includes('URL Protocol'));assert(marker);assert(marker.args.includes('/v'));
+const open=calls.find(c=>c.command==='reg.exe'&&c.args.includes('HKCU\\Software\\Classes\\hialpesa-vince\\shell\\open\\command'));assert(open);assert(open.args.includes('"'+process.execPath+'" "'+require.resolve('./agent.cjs')+'" "%1"'));
+console.log('Instalador: protocolo Windows registrado por usuario con comando y argumento entre comillas. Prueba simulada sin modificar el registro.');
+}finally{Module._load=original;fs.existsSync=exists;process.argv=argv}})().catch(e=>{console.error(e);process.exit(1)});

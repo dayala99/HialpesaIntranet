@@ -7,3 +7,15 @@
 .po-options{display:grid;gap:8px}.po-options button{justify-content:flex-start;text-align:left;width:100%}
 
 .color-confirmation{margin:16px 0}.color-confirmation td,.color-confirmation th{white-space:normal;overflow-wrap:anywhere}.color-confirmation table{min-width:420px}.color-confirmation td{max-width:280px}
+.agent-countdown{display:grid;justify-items:center;gap:10px;padding:28px 24px 30px;color:var(--accent)}.agent-countdown span{font-size:9px;font-weight:600;letter-spacing:1.3px;color:var(--muted)}.agent-countdown strong{font-size:38px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:1px}
+
+
+.po-detail-footer{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.po-detail-totals{display:flex;gap:32px;flex-wrap:wrap}.po-detail-totals>div{display:flex;flex-direction:column;gap:5px}.po-detail-totals span{font-size:11px;color:var(--muted)}.po-detail-totals strong{font-size:20px;color:var(--accent);font-variant-numeric:tabular-nums}
+
+.item-edit-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px}@media(max-width:520px){.item-edit-fields{grid-template-columns:1fr}}
+
+.gm-action{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:20px;height:20px;font-size:12px;font-weight:700;line-height:20px;letter-spacing:.3px;vertical-align:middle}
+
+.order-grid .small-button{vertical-align:middle}
+
+.consultation-groups{grid-column:1/-1}.consultation-group-codes{display:flex;flex-wrap:wrap;gap:8px}.consultation-group-codes span{background:#eaf3ef;border:1px solid #cfdfd7;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600;color:var(--accent)}

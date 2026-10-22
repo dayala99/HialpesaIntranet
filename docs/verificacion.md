@@ -58,3 +58,5 @@ Regla corregida tras aclaración del flujo OP/ítem: redondeo ascendente al sigu
 
 Guía vigente: docs/pruebas-registro-oc.md. El 16/10/2026 se implementó cabecera + grupo, detalle OP/ítem, ajuste a múltiplos de 5 con precio explícito e impresión. 34 pruebas unitarias aprobadas; registro de navegador con todas las APIs simuladas, cuatro anchos (320, 390, 768, 1440), PDF ficticio de una página verificado visualmente. Ningún procedimiento mutador se ejecutó contra HIALPESA. Las observaciones anteriores sobre ausencia de registro o estado de solo consulta corresponden a versiones previas y quedan reemplazadas por esta implementación; el guardado real lo probará el usuario.
 
+
+Migracion a .NET 10 (20/10/2026): API y pruebas en net10.0, SDK 10.0.402. Pasaron 54 pruebas Release. Verificados health, autenticacion Windows, consulta de OC y Swagger localmente. Escrituras SQL deshabilitadas. Backend publicado en D:\Programador04\Archivos\Compilados\Back. La automatizacion local del proveedor mantiene sus restricciones previas.

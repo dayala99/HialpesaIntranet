@@ -10,6 +10,10 @@ public interface IOrderWriteSession : IAsyncDisposable
 {
     Task<OrderReference> CreateHeader(CreateOrderRequest request, CancellationToken ct);
     Task LinkGroup(OrderReference order, string group, CancellationToken ct);
+    Task RemoveRequirements(OrderReference order,string sequence,IReadOnlyList<string> keys,CancellationToken ct);
+    Task ChangeItem(OrderReference order,string sequence,UpdateOrderItemRequest? request,CancellationToken ct);
+    Task UpdateHeader(OrderReference order,UpdateOrderRequest request,CancellationToken ct);
+    Task RemoveGroup(OrderReference order,string group,CancellationToken ct);
     Task<OrderRegistrationHeader> LockOrder(OrderReference order, CancellationToken ct);
     Task<IReadOnlyList<PendingRequirement>> Pending(OrderRegistrationHeader order, string productionOrder, string itemCode, CancellationToken ct);
     Task<IReadOnlyList<SavedItem>> Items(OrderReference order, CancellationToken ct);
@@ -21,13 +25,48 @@ public sealed class RegistrationConflictException(string message) : Exception(me
 
 public sealed class OrderRegistrationService(IOrderWriteGateway gateway)
 {
+    public async Task RemoveRequirements(OrderReference order,string sequence,IReadOnlyList<string> keys,string gestionUser,string windowsUser,CancellationToken ct)
+    {
+        if(keys.Count is <1 or >500||keys.Distinct().Count()!=keys.Count)throw new ArgumentException("Selecciona requerimientos sin duplicados.");
+        await using var session=await gateway.Begin(gestionUser,windowsUser,ct);var header=await session.LockOrder(order,ct);
+        if(header.ClassCode!="01"||header.Status!="P")throw new RegistrationConflictException("Retira requerimientos únicamente de una OC de avíos Planeada.");
+        await session.RemoveRequirements(order,sequence,keys,ct);await session.Commit(ct);
+    }
+    public async Task ChangeItem(OrderReference order,string sequence,UpdateOrderItemRequest? request,string gestionUser,string windowsUser,CancellationToken ct)
+    {
+        await using var session=await gateway.Begin(gestionUser,windowsUser,ct);var header=await session.LockOrder(order,ct);
+        if(header.ClassCode!="01"||header.Status!="P")throw new RegistrationConflictException("Modifica detalles únicamente en OC de avíos Planeadas.");
+        await session.ChangeItem(order,sequence,request,ct);await session.Commit(ct);
+    }
+    public async Task Update(OrderReference order,UpdateOrderRequest request,string gestionUser,string windowsUser,CancellationToken ct)
+    {
+        await using var session=await gateway.Begin(gestionUser,windowsUser,ct);
+        var header=await session.LockOrder(order,ct);
+        if(header.ClassCode!="01"||header.Status!="P")throw new RegistrationConflictException("Edita únicamente OC de avíos Planeadas.");
+        await session.UpdateHeader(order,request,ct);await session.Commit(ct);
+    }
+    public Task AddGroups(OrderReference order,IReadOnlyList<string> groups,string gestionUser,string windowsUser,CancellationToken ct)=>ChangeGroups(order,groups,Array.Empty<string>(),gestionUser,windowsUser,ct);
+    public async Task ChangeGroups(OrderReference order,IReadOnlyList<string> groups,IReadOnlyList<string> removed,string gestionUser,string windowsUser,CancellationToken ct)
+    {
+        if(groups.Count+removed.Count is <1 or >100||groups.Concat(removed).Any(g=>string.IsNullOrWhiteSpace(g)||g.Trim().Length>8))throw new ArgumentException("Selecciona grupos válidos.");
+        var added=groups.Select(g=>g.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var deleted=removed.Select(g=>g.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        if(added.Intersect(deleted,StringComparer.OrdinalIgnoreCase).Any())throw new ArgumentException("Un grupo no puede añadirse y eliminarse a la vez.");
+        await using var session=await gateway.Begin(gestionUser,windowsUser,ct);
+        var header=await session.LockOrder(order,ct);
+        if(header.ClassCode!="01"||header.Status!="P")throw new RegistrationConflictException("Modifica grupos únicamente en una OC de avíos Planeada.");
+        foreach(var group in deleted)await session.RemoveGroup(order,group,ct);
+        foreach(var group in added)await session.LinkGroup(order,group,ct);
+        await session.Commit(ct);
+    }
     public async Task<OrderReference> Create(CreateOrderRequest request, string gestionUser, string windowsUser, CancellationToken ct)
     {
         await using var session = await gateway.Begin(gestionUser, windowsUser, ct);
         var order = await session.CreateHeader(request, ct);
         if (string.IsNullOrWhiteSpace(order.Series) || string.IsNullOrWhiteSpace(order.Number))
             throw new RegistrationConflictException("Gestión no devolvió el número de OC; la operación se revirtió.");
-        await session.LinkGroup(order, request.ManufacturingGroup.Trim(), ct);
+        foreach(var group in new[]{request.ManufacturingGroup}.Concat(request.AdditionalManufacturingGroups).Where(g=>!string.IsNullOrWhiteSpace(g)).Select(g=>g.Trim()).Distinct(StringComparer.OrdinalIgnoreCase))
+            await session.LinkGroup(order, group, ct);
         await session.Commit(ct);
         return order;
     }

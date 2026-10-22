@@ -7,8 +7,23 @@ using Microsoft.AspNetCore.Mvc;
 namespace Intranet.Api.Controllers;
 
 [ApiController, Route("api/v1/logistica/avios")]
-public sealed class AviosController(AviosRepository repository, GestionIdentity identity, QuantityCalculator calculator) : ControllerBase
+public sealed class AviosController(AviosRepository repository, GestionIdentity identity, QuantityCalculator calculator, RegistrationReadRepository reads) : ControllerBase
 {
+    [HttpGet("pos/{po}/detalle")]
+    public async Task<IActionResult> PoDetails([RegularExpression("^[A-Za-z0-9_./ -]{1,70}$")] string po,[FromQuery,Required,StringLength(20)] string clientCode,CancellationToken ct)
+    {
+        identity.GetUser(User);
+        if(!await repository.PoExists(po,clientCode,ct))return NotFound();
+        return Ok(await repository.PoDetails(po,clientCode,ct));
+    }
+
+    [HttpGet("pos")]
+    public async Task<IActionResult> ListPos([FromQuery, StringLength(70)] string po="", [FromQuery, StringLength(100)] string search="", [FromQuery, Range(1,1000000)] int page=1, CancellationToken ct=default)
+    {
+        if(identity.IsDemo) return Ok(new {rows=Array.Empty<object>(),page,totalRows=0,totalPages=1,hasMore=false});
+        return Ok(await repository.ListPos((po ?? "").Trim(),(search ?? "").Trim(),page,ct));
+    }
+
     [HttpGet("ordenes/{series}/{number}")]
     public async Task<ActionResult<OrderDetail>> GetOrder([RegularExpression("^[0-9]{3}$")] string series, [RegularExpression("^[0-9]{6}$")] string number, CancellationToken ct)
     {
@@ -16,7 +31,7 @@ public sealed class AviosController(AviosRepository repository, GestionIdentity 
         var order = await repository.FindOrder(series, number, identity.GetUser(User), ct, identity.GetReadAllWindowsUser(User));
         if (order is null) return NotFound(new ProblemDetails { Title = "La OC no existe o tu usuario no tiene acceso a su clase." });
         if (order.Class != "01") return BadRequest(new ProblemDetails { Title = "Este primer módulo admite OC de clase 01: Compra Avíos Producción." });
-        return Ok(new OrderDetail(order, await repository.Items(series, number, ct)));
+        return Ok(new OrderDetail(order, await repository.Items(series, number, ct), await reads.OrderGroups(new(series,number),ct)));
     }
 
     [HttpGet("ordenes/{series}/{number}/items/{sequence}/requerimientos")]

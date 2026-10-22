@@ -1,5 +1,5 @@
 <a class="skip-link" href="#main">Ir al contenido</a>
-<div class="app-shell">
+<div class="app-shell" [class.login-mode]="isLogin">
   <aside class="sidebar" [class.is-open]="menuOpen" aria-label="Navegación principal">
     <a routerLink="/" class="brand" (click)="menuOpen=false"><span class="brand-mark">H</span><span>HIALPESA<small>INTRANET</small></span></a>
     <div class="nav-label">ESPACIO DE TRABAJO</div>
@@ -8,16 +8,16 @@
       <button class="nav-group-toggle" type="button" (click)="logisticsOpen=!logisticsOpen" [attr.aria-expanded]="logisticsOpen" aria-controls="logistics-menu"><mat-icon aria-hidden="true">inventory_2</mat-icon><span class="nav-group-label">Logística</span><mat-icon class="nav-chevron" aria-hidden="true">{{logisticsOpen ? 'expand_more' : 'chevron_right'}}</mat-icon></button>
       <div id="logistics-menu" class="nav-submenu" [hidden]="!logisticsOpen">
         <a routerLink="/logistica/avios/nueva" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" (click)="menuOpen=false"><mat-icon aria-hidden="true">add</mat-icon> Nueva orden de compra</a>
-        <a routerLink="/logistica/avios" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" (click)="menuOpen=false"><mat-icon aria-hidden="true">inventory_2</mat-icon> Compras de avíos</a>
+        <a routerLink="/logistica/avios" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" (click)="menuOpen=false"><mat-icon aria-hidden="true">inventory_2</mat-icon> Consulta OC y PO</a>
         <a routerLink="/logistica/importaciones" routerLinkActive="active" (click)="menuOpen=false"><mat-icon aria-hidden="true">flight_takeoff</mat-icon> Importaciones</a>
       </div>
     </nav>
     <div class="sidebar-footer"><span class="connection-dot"></span> Gestión empresarial<small>Migración progresiva a la web</small></div>
   </aside>
   <button *ngIf="menuOpen" class="menu-backdrop" aria-label="Cerrar navegación" (click)="menuOpen=false"></button>
-  <div class="workspace"><header class="topbar"><div class="topbar-left"><button class="icon-button mobile-menu" aria-label="Abrir navegación" [attr.aria-expanded]="menuOpen" (click)="menuOpen=!menuOpen"><mat-icon>menu</mat-icon></button><span>Intranet <span class="slash">/</span> Gestión empresarial</span></div><div class="account"><span class="mode-badge" *ngIf="session.current()?.demo">Demostración</span><span class="avatar" aria-hidden="true">{{session.current()?.demo ? 'D' : 'U'}}</span><span class="user-name">{{session.current()?.displayName || 'Conectando…'}}</span></div></header>
+  <div class="workspace"><header class="topbar"><div class="topbar-left"><button class="icon-button mobile-menu" aria-label="Abrir navegación" [attr.aria-expanded]="menuOpen" (click)="menuOpen=!menuOpen"><mat-icon>menu</mat-icon></button><span>Intranet <span class="slash">/</span> Gestión empresarial</span></div><div class="account"><span class="mode-badge" *ngIf="session.current()?.demo">Demostración</span><span class="avatar" aria-hidden="true">{{session.current()?.demo ? 'D' : 'U'}}</span><span class="user-name">{{session.current()?.displayName || 'Conectando…'}}</span><button type="button" (click)="logout()" *ngIf="session.current()" aria-label="Cerrar sesion"><mat-icon aria-hidden="true">logout</mat-icon> Salir</button></div></header>
     <div class="connection-error" role="alert" *ngIf="session.error()">{{session.error()}} <button (click)="session.load()">Reintentar</button></div>
     <main id="main"><router-outlet></router-outlet></main>
-    <footer class="app-footer">Hialpesa · Intranet <span>Frontend Angular 18 / API .NET 8</span></footer>
+    <footer class="app-footer">Hialpesa · Intranet <span>Frontend Angular 18 / API .NET 10</span></footer>
   </div>
 </div>

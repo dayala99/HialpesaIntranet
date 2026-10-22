@@ -1,0 +1,8 @@
+<div class="login-page"><section class="login-card" aria-labelledby="login-title">
+ <div class="login-brand"><span>H</span><div>HIALPESA<small>INTRANET</small></div></div>
+ <h1 id="login-title">Iniciar sesión</h1><p>Ingresa con tu usuario y contraseña de Gestión.</p>
+ <form (ngSubmit)="submit()"><label for="login-user">Usuario<input id="login-user" name="username" [(ngModel)]="username" autocomplete="username" maxlength="80" required [disabled]="busy"></label>
+ <label for="login-password">Contraseña<input id="login-password" name="password" type="password" [(ngModel)]="password" autocomplete="current-password" maxlength="200" required [disabled]="busy"></label>
+ <p class="feedback error" role="alert" *ngIf="error">{{error}}</p><button class="primary" type="submit" [disabled]="busy||!username.trim()||!password">{{busy ? 'Ingresando...' : 'Ingresar'}}</button></form>
+ </section></div>
+

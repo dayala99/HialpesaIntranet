@@ -35,8 +35,8 @@ public static class RegistrationQueries
         // Only NPs already linked to a manufacturing group on this OC may be used.
         const string linked="""
             SELECT COUNT(*) FROM dbo.ES_ORDPRO p
-            WHERE p.Cod_OrdPro=@Op AND (p.Cod_GrupoLog=@GroupCode OR EXISTS (
-                SELECT 1 FROM dbo.LG_OrdComp_Grupos g WHERE g.Ser_OrdComp=@Series AND g.Cod_OrdComp=@Number AND g.Cod_Grupo=p.Cod_GrupoLog))
+            WHERE p.Cod_OrdPro=@Op AND EXISTS (
+                SELECT 1 FROM dbo.LG_OrdComp_Grupos g WHERE g.Ser_OrdComp=@Series AND g.Cod_OrdComp=@Number AND g.Cod_Grupo=p.Cod_GrupoLog)
             """;
         var exists=await connection.ExecuteScalarAsync<int>(new CommandDefinition(linked,new {Op=op,GroupCode=header.ManufacturingGroup,header.Series,header.Number},transaction,cancellationToken:ct));
         if(exists==0) throw new RegistrationConflictException("La OP no pertenece a un grupo de manufactura asociado a esta OC.");

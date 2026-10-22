@@ -6,7 +6,8 @@ public sealed class GestionIdentity(IOptions<GestionOptions> options, IWebHostEn
 {
     public bool CanRegister(System.Security.Claims.ClaimsPrincipal principal) => !IsDemo
         && options.Value.EnableOrderRegistration && principal.Identity?.IsAuthenticated == true
-        && options.Value.WriteWindowsUsers.Contains(principal.Identity.Name ?? "", StringComparer.OrdinalIgnoreCase);
+        && (options.Value.WriteWindowsUsers.Contains(principal.Identity.Name ?? "", StringComparer.OrdinalIgnoreCase)
+            || (options.Value.AllowAllAuthenticatedWrites && !string.IsNullOrWhiteSpace(principal.FindFirst(IntranetLogin.GestionUserClaim)?.Value)));
     public bool IsDemo => environment.IsDevelopment() && options.Value.Mode == "Demo";
     public string? GetReadAllWindowsUser(System.Security.Claims.ClaimsPrincipal principal)
     {
@@ -17,6 +18,9 @@ public sealed class GestionIdentity(IOptions<GestionOptions> options, IWebHostEn
     }
     public string GetUser(System.Security.Claims.ClaimsPrincipal principal)
     {
+        if(principal.Identity?.IsAuthenticated!=true)throw new UnauthorizedAccessException();
+        var gestionUser=principal.FindFirst(IntranetLogin.GestionUserClaim)?.Value;
+        if(!string.IsNullOrWhiteSpace(gestionUser))return gestionUser;
         if (IsDemo) return "demo";
         var windowsName = principal.Identity?.Name ?? throw new UnauthorizedAccessException();
         var mapping = options.Value.WindowsUsers.FirstOrDefault(p => string.Equals(p.Key, windowsName, StringComparison.OrdinalIgnoreCase));
@@ -25,3 +29,5 @@ public sealed class GestionIdentity(IOptions<GestionOptions> options, IWebHostEn
         return mapping.Value.Trim();
     }
 }
+
+
