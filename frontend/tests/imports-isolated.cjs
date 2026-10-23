@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const context=await browser.newContext();let writes=0;let existing='';
 await context.route('**/api/v1/**',async route=>{const req=route.request(),url=req.url();let data={};
 if(req.method()==='POST'){assert.match(url,/importaciones\/ordenes\/002\/999001/);writes++;data={number:'20269999'};existing='20269999';}
-else if(url.endsWith('/sesion'))data={displayName:'Prueba',gestionUser:'test',demo:false,canWriteDatabase:true};
+else if(url.endsWith('/sesion'))data={displayName:'Prueba',gestionUser:'test',demo:false,isGlobalUser:true,allowedOptions:[],profiles:[],canWriteDatabase:true};
 else if(url.endsWith('/catalogos'))data=[{Kind:'itemTypes',Code:'371',Name:'Avíos'},{Kind:'origins',Code:'HK',Name:'Hong Kong'},{Kind:'areas',Code:'05',Name:'Logística'}];
 else if(url.includes('/importaciones/ordenes/'))data={automaticNumbering:true,validAnnex:true,source:{supplierCode:'TEST',supplier:'Proveedor ficticio',annexType:'P',annex:'4815',currency:'USD',existingImport:existing,supplierOrigin:'E'}};
 else if(url.includes('/importaciones?'))data={rows:existing?[{number:existing,supplier:'Proveedor ficticio',status:'R',currency:'USD'}]:[],hasMore:false,page:1};

@@ -1,0 +1,26 @@
+<section class="panel register"><div class="register-heading"><h1>{{title}} · Control Calidad{{unfinished ? ' - Tela Por Acabar' : ''}}</h1><button type="button" (click)="completed.emit(false)" [disabled]="busy"><mat-icon>arrow_back</mat-icon>Regresar</button></div>
+<p role="alert" class="feedback error" *ngIf="error">{{error}}</p>
+<form (submit)="$event.preventDefault()"><fieldset [disabled]="busy"><div class="fields">
+<div class="batch-customer"><div class="batch-query"><label>Partida<input (keydown.enter)="$event.preventDefault();loadItems()" name="batch" [(ngModel)]="model.batch" (ngModelChange)="batchChanged()" maxlength="5" [disabled]="action!=='I'" required></label><button class="load-items" type="button" *ngIf="action==='I'" (click)="loadItems()" [disabled]="loading">{{loading?'Consultando…':'Consultar ítems'}}</button></div><label>Cliente<input name="customer" [value]="customer" readonly></label>
+<label>Evento<select name="eventCode" [(ngModel)]="model.eventCode" [disabled]="action!=='I'" required><option value="">Selecciona un evento</option><option *ngFor="let o of catalog(action==='I'?'validEvents':'events')" [value]="o.code">{{o.code}} · {{o.description}}</option></select></label></div>
+
+
+</div>
+<fieldset [disabled]="action==='D'"><div class="fields">
+<label>Fecha de evento<input type="date" name="date" [(ngModel)]="model.date" required></label>
+<label>Status<select name="status" [(ngModel)]="model.status" (ngModelChange)="statusChanged()" required><option *ngFor="let o of catalog('statuses')" [value]="o.code">{{o.description}}</option></select></label>
+<label>Auditor<select name="auditor" [(ngModel)]="model.auditor" required><option value="">Selecciona un auditor</option><option *ngFor="let o of catalog('auditors')" [value]="o.code">{{o.description}}</option></select></label>
+<label>Resultado auditoría externa<select name="externalResult" [(ngModel)]="model.externalResult"><option value="">Sin resultado</option><ng-container *ngFor="let o of catalog('statuses')"><option *ngIf="o.code==='A'||o.code==='R'" [value]="o.code">{{o.description}}</option></ng-container></select></label>
+<label>Ubicación de reproceso<select name="location" [(ngModel)]="model.location" required><option value="">Selecciona una ubicación</option><option *ngFor="let o of catalog('locations')" [value]="o.code">{{o.code}} · {{o.description}}</option></select></label>
+<ng-container *ngIf="model.status==='R'||model.status==='P'">
+<label>Motivo<select name="reason" [(ngModel)]="model.reason" [required]="model.status==='R'"><option value="">Selecciona un motivo</option><option *ngFor="let o of catalog('reasons')" [value]="o.code">{{o.code}} · {{o.description}}</option></select></label>
+<label>Desviación<select name="deviation" [(ngModel)]="model.deviation"><option value="">Sin desviación</option><option *ngFor="let o of catalog('deviations')" [value]="o.code">{{o.code}} · {{o.description}}</option></select></label>
+<label>Causa<select name="cause" [(ngModel)]="model.cause"><option value="">Sin causa</option><option *ngFor="let o of catalog('causes')" [value]="o.code">{{o.code}} · {{o.description}}</option></select></label>
+</ng-container>
+<label>Observaciones<textarea name="observations" [(ngModel)]="model.observations" maxlength="100" rows="3"></textarea></label>
+<label>Observación Producción<textarea name="productionObservations" [(ngModel)]="model.productionObservations" maxlength="100" rows="3"></textarea></label>
+</div><div class="checks"><label><input type="checkbox" name="forcedError" [(ngModel)]="model.forcedError">Error forzado área</label><label><input type="checkbox" name="dispatched" [(ngModel)]="model.dispatched">Despachado</label></div></fieldset>
+<div class="table-scroll" *ngIf="items.length"><table><thead><tr><th><input type="checkbox" name="selectAllItems" [ngModel]="allSelected" (ngModelChange)="selectAll($event)" [indeterminate]="someSelected" [disabled]="action!=='I'" aria-label="Seleccionar todos los ítems"></th><th>Sec.</th><th>Tela</th><th>Color</th><th>Talla</th><th>Kilos</th></tr></thead><tbody><tr *ngFor="let item of items;let i=index"><td><input type="checkbox" [name]="'sel-'+i" [(ngModel)]="item['selected']" [disabled]="action!=='I'" [attr.aria-label]="'Seleccionar ítem '+item['sec']"></td><td>{{item['sec']}}</td><td>{{item['des_tela']}}</td><td>{{item['des_color']}}</td><td>{{item['talla']}}</td><td><input type="number" inputmode="decimal" (focus)="selectNumber($event)" (click)="selectNumber($event)" [name]="'kilos-'+i" [(ngModel)]="item['kilos']" min="0" max="99999999999.99" step="0.01" [disabled]="action==='D'" required [attr.aria-label]="'Kilos ítem '+item['sec']"></td></tr></tbody></table></div>
+
+<div class="actions"><button type="button" (click)="completed.emit(false)" [disabled]="busy">Cancelar</button><button type="button" (click)="save()" class="primary" [disabled]="busy||loading">{{busy?'Procesando…':action==='D'?'Eliminar evento':'Guardar evento'}}</button></div>
+</fieldset></form></section>

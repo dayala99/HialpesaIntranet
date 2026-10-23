@@ -30,7 +30,8 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = 429;
     options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
-builder.Services.AddControllers();
+builder.Services.AddScoped<Intranet.Api.Security.PortalAccessFilter>();
+builder.Services.AddControllers(options=>options.Filters.AddService<Intranet.Api.Security.PortalAccessFilter>());
 builder.Services.AddCors(options => options.AddPolicy("LocalAngular", policy => policy
     .WithOrigins("http://localhost:4200").AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 builder.Services.AddProblemDetails();

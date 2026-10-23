@@ -14,6 +14,8 @@ public sealed class LayerDependenciesTests
     [InlineData(typeof(AviosController))]
     [InlineData(typeof(OrderRegistrationController))]
     [InlineData(typeof(ImportsController))]
+    [InlineData(typeof(DyeingController))]
+    [InlineData(typeof(QualityControlController))]
     [InlineData(typeof(ProviderController))]
     public void ControllersUseServiceInterfaces(Type controller) => Assert.All(controller.GetConstructors().Single().GetParameters(), p => { Assert.True(p.ParameterType.IsInterface); Assert.Equal("Intranet.Service", p.ParameterType.Assembly.GetName().Name); });
 }

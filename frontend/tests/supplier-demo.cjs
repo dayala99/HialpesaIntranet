@@ -16,7 +16,7 @@ const assert=require('node:assert/strict');
    const request=route.request();apiCalls.push(request.method()+' '+new URL(request.url()).pathname);
    const respond=body=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body),headers:{'Access-Control-Allow-Origin':'http://localhost:4200','Access-Control-Allow-Credentials':'true'}});
    if(request.method()!=='GET')return route.abort();
-   if(request.url().endsWith('/sesion'))return respond({displayName:'Usuario ficticio',gestionUser:'test',demo:false,canWriteDatabase:false});
+   if(request.url().endsWith('/sesion'))return respond({displayName:'Usuario ficticio',gestionUser:'test',demo:false,isGlobalUser:true,allowedOptions:[],profiles:[],canWriteDatabase:false});
    if(request.url().endsWith('/ordenes/002/999002'))return respond({order,items});
    return route.fulfill({status:404,contentType:'application/json',body:'{}'});
   });

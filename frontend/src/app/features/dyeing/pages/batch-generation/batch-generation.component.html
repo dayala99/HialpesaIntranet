@@ -1,0 +1,68 @@
+<app-quality-control-dialog *ngIf="qualityData as quality" [data]="quality" (completed)="closeQuality($event)"></app-quality-control-dialog>
+<section aria-labelledby="batch-generation-title" [hidden]="qualityData">
+  <div class="eyebrow">TINTORERÍA</div>
+  <h1 id="batch-generation-title">Generación Partidas - Tintoreria</h1>
+  <p>Consulta partidas por cliente, número de OT, estado, N/P o fibra.</p>
+
+  <div class="feedback error" role="alert" *ngIf="catalogsError">{{catalogsError}} <button type="button" (click)="loadCatalogs()" [disabled]="catalogsBusy">Reintentar</button></div>
+  <p role="status" *ngIf="catalogsBusy">Cargando opciones de búsqueda…</p>
+  <form class="panel filters" (ngSubmit)="search()">
+    <fieldset [disabled]="busy || catalogsBusy">
+      <legend>Buscar partidas</legend>
+      <div class="filter-modes">
+        <label><input type="radio" name="mode" value="client" [(ngModel)]="mode" (ngModelChange)="changed()"> Por cliente</label>
+        <label><input type="radio" name="mode" value="number" [(ngModel)]="mode" (ngModelChange)="changed()"> Por número</label>
+        <label><input type="radio" name="mode" value="status" [(ngModel)]="mode" (ngModelChange)="changed()"> Por estado</label>
+        <label><input type="radio" name="mode" value="np" [(ngModel)]="mode" (ngModelChange)="changed()"> Por N/P</label>
+        <label><input type="radio" name="mode" value="fiber" [(ngModel)]="mode" (ngModelChange)="changed()"> Por fibra</label>
+      </div>
+      <div class="fields">
+        <ng-container *ngIf="mode === 'client'">
+          <label>Cliente<select name="client" [(ngModel)]="filter.client" (ngModelChange)="changed()"><option value="">Selecciona un cliente</option><option *ngFor="let option of catalog('clients')" [value]="option.code">{{option.description}}</option></select></label>
+          <label>Buscar por<select name="clientMode" [(ngModel)]="clientMode" (ngModelChange)="changed()"><option [ngValue]="2">Pendientes</option><option [ngValue]="1">Orden de compra</option><option [ngValue]="3">Fechas de creación</option></select></label>
+          <ng-container *ngIf="clientMode === 1">
+            <label>Serie OC<input name="series" [(ngModel)]="filter.series" (ngModelChange)="changed()" maxlength="3" placeholder="Ej. 002"></label>
+            <label>Número OC<input name="orderNumber" [(ngModel)]="filter.orderNumber" (ngModelChange)="changed()" maxlength="6"></label>
+            <label>Código de color (opcional)<input name="color" [(ngModel)]="filter.color" (ngModelChange)="changed()" maxlength="6"></label>
+          </ng-container>
+        </ng-container>
+        <label *ngIf="mode === 'number'">Número de OT<input name="batch" [(ngModel)]="filter.batch" (ngModelChange)="changed()" maxlength="5" autocomplete="off" placeholder="Ej. Y2035"></label>
+        <label *ngIf="mode === 'status'">Estado<select name="status" [(ngModel)]="filter.status" (ngModelChange)="changed()"><option value="">Selecciona un estado</option><option *ngFor="let option of catalog('statuses')" [value]="option.code">{{option.description}}</option></select></label>
+        <ng-container *ngIf="mode === 'np'">
+          <label>Fábrica<select name="factory" [(ngModel)]="filter.factory" (ngModelChange)="changed()"><option value="">Selecciona una fábrica</option><option *ngFor="let option of catalog('factories')" [value]="option.code">{{option.description}}</option></select></label>
+          <label>N/P<input name="productionOrder" [(ngModel)]="filter.productionOrder" (ngModelChange)="changed()" maxlength="5"></label>
+        </ng-container>
+        <label *ngIf="mode === 'fiber'">Fibra<select name="fiber" [(ngModel)]="filter.fiber" (ngModelChange)="changed()"><option value="">Selecciona una fibra</option><option *ngFor="let option of catalog('fibers')" [value]="option.code">{{option.description}}</option></select></label>
+        <ng-container *ngIf="usesDates">
+          <label>{{mode === 'fiber' ? 'Primer envío desde' : 'Creación desde'}}<input type="date" name="from" [(ngModel)]="filter.from" (ngModelChange)="changed()" min="1900-01-01" max="2099-12-31"></label>
+          <label>{{mode === 'fiber' ? 'Primer envío hasta' : 'Creación hasta'}}<input type="date" name="to" [(ngModel)]="filter.to" (ngModelChange)="changed()" min="1900-01-01" max="2099-12-31"></label>
+        </ng-container>
+      </div>
+    </fieldset>
+    <button class="primary" type="submit" [disabled]="busy || catalogsBusy || !!catalogsError">{{busy ? 'Buscando…' : 'Buscar'}}</button>
+  </form>
+  <p class="feedback error" role="alert" *ngIf="error">{{error}}</p>
+  <p role="status" class="feedback" *ngIf="qualityMessage">{{qualityMessage}}</p>
+  <section class="panel actions" aria-labelledby="batch-actions-title"><h2 id="batch-actions-title">Acciones</h2><div class="button-group"><button type="button" (click)="openQuality()" [disabled]="!selected || busy">Datos Control Calidad</button></div></section>
+  <section class="panel results" aria-label="Resultados de partidas" [attr.aria-busy]="busy">
+    <div class="result-heading"><h2>Partidas</h2><span *ngIf="searched">{{totalRows}} detalles encontrados</span></div>
+    <div class="selection" *ngIf="selected">
+      <span>Partida <strong>{{selected['cod_ordtra']}}</strong> · Sec. {{selected['num_secuencia']}}</span>
+      <span>Estado: <strong>{{display(selected,'status')}}</strong></span>
+      <span>Clase O/C: <strong>{{display(selected,'clase_oc')}}</strong></span>
+    </div>
+    <p role="status" *ngIf="busy">Consultando partidas…</p>
+    <p role="status" *ngIf="!busy && !searched">Selecciona un filtro y pulsa Buscar.</p>
+    <p role="status" *ngIf="searched && !rows.length">No se encontraron partidas para este filtro.</p>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Tabla de partidas, desplazamiento horizontal" *ngIf="rows.length">
+      <table><thead><tr><th *ngFor="let column of columns" scope="col">{{label(column)}}</th></tr></thead>
+        <tbody><tr *ngFor="let row of rows" (click)="selected=row" [class.selected]="selected === row">
+          <td *ngFor="let column of columns"><button class="batch-link" type="button" *ngIf="column === 'cod_ordtra'; else cell" (click)="selected=row" [attr.aria-label]="'Seleccionar partida '+row['cod_ordtra']+' secuencia '+row['num_secuencia']" [attr.aria-pressed]="selected === row">{{display(row,column)}}</button><ng-template #cell>{{display(row,column)}}</ng-template></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <nav class="pagination" aria-label="Paginación de partidas" *ngIf="searched && totalRows > 0">
+      <button type="button" (click)="search(page-1)" [disabled]="busy || page <= 1">Anterior</button><span>Página {{page}} de {{totalPages}}</span><button type="button" (click)="search(page+1)" [disabled]="busy || page >= totalPages">Siguiente</button>
+    </nav>
+  </section>
+</section>

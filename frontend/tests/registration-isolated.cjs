@@ -20,7 +20,7 @@ const assert=require('node:assert/strict');
    const request=route.request(),url=new URL(request.url()),p=url.pathname,method=request.method();
    const respond=(body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body),headers:{'Access-Control-Allow-Origin':'http://localhost:4200','Access-Control-Allow-Credentials':'true'}});
    if(method==='OPTIONS')return route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':'http://localhost:4200','Access-Control-Allow-Credentials':'true','Access-Control-Allow-Headers':'content-type,x-intranet-write','Access-Control-Allow-Methods':'GET,POST,OPTIONS'}});
-   if(p.endsWith('/sesion'))return respond({displayName:'USUARIO FICTICIO',gestionUser:'test',demo:false,canWriteDatabase:true});
+   if(p.endsWith('/sesion'))return respond({displayName:'USUARIO FICTICIO',gestionUser:'test',demo:false,isGlobalUser:true,allowedOptions:[],profiles:[],canWriteDatabase:true});
    if(p.endsWith('/registro/catalogos'))return respond({conditions:[option],discounts:[option],currencies:[{code:'USD',description:'Dólar'}],deliveryLocations:[option],costCenters:[option]});
    if(method==='POST'&&p.endsWith('/avios/ordenes')){
     const data=request.postDataJSON();assert.equal(data.manufacturingGroup,'GRP-TEST');assert.equal(data.supplierCode,'000000000001');assert.equal(request.headers()['x-intranet-write'],'1');created++;return respond(reference,201);

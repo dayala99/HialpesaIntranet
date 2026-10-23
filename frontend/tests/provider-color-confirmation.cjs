@@ -6,7 +6,7 @@ const initial=[{style:'MO1909170B',colorCode:'019BHG',providerColor:'BLACK/MED H
   const page=await browser.newPage({viewport:{width:1280,height:900}});const calls=[];
   await page.route('**/api/v1/**',async route=>{
    const url=route.request().url();let data;
-   if(url.endsWith('/sesion'))data={displayName:'Prueba',gestionUser:'test',canWriteDatabase:false,demo:false};
+   if(url.endsWith('/sesion'))data={displayName:'Prueba',gestionUser:'test',isGlobalUser:true,allowedOptions:[],profiles:[],canWriteDatabase:false,demo:false};
    else if(url.endsWith('/pos'))data=['PO-00054166'];
    else if(url.endsWith('/iniciar-sesion')){
     const body=route.request().postDataJSON();calls.push(body);

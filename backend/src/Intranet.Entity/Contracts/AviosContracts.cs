@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Intranet.Entity;
 
-public sealed record SessionResponse(string DisplayName, string GestionUser, bool Demo, bool CanWriteDatabase);
+public sealed record SessionResponse(string DisplayName, string GestionUser, bool Demo, bool CanWriteDatabase, bool IsGlobalUser=false, IReadOnlyList<string>? AllowedOptions=null, IReadOnlyList<GestionProfile>? Profiles=null);
 public sealed record PurchaseOrder(string Series, string Number, string Supplier, string Status, string Class, string Client, DateTime? CreatedAt);
 public sealed record OrderItem(string Sequence, string ItemCode, string Description, string Size, string Style, decimal Required, decimal Purchased, decimal Received, string ProductionOrders = "");
 public sealed record OrderDetail(PurchaseOrder Order, IReadOnlyList<OrderItem> Items, IReadOnlyList<LookupOption>? ManufacturingGroups = null);

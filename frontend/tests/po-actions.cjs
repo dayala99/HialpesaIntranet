@@ -8,7 +8,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
  await page.addInitScript(()=>{window.vinceLinks=[];window.open=url=>{window.vinceLinks.push(url);return null;};});
  await page.route('**/BackEnd/api/v1/**',async route=>{
  const url=route.request().url();let data;
- if(url.endsWith('/sesion'))data={displayName:'Prueba',gestionUser:'test',canWriteDatabase:true,demo:false};
+ if(url.endsWith('/sesion'))data={displayName:'Prueba',gestionUser:'test',isGlobalUser:true,allowedOptions:[],profiles:[],canWriteDatabase:true,demo:false};
  else if(url.includes('/logistica/avios/pos?'))data={rows:[{po:'PO-00055204',clientCode:'10627',client:'VINCE WOMENS',description:'',createdAt:'2026-09-17'}],page:1,totalPages:1,totalRows:1,hasMore:false};
  else if(url.includes('/detalle?'))data=[{lot:'001',style:'V018884418',description:'SCOOP NK TANK',colorCode:'BAYLEAF',color:'BAYLEAF',size:'L / G',required:350,purchased:350,shipped:0,upc:''}];
  else if(url.endsWith('/preparar-apertura-po')){calls.push(route.request().postDataJSON());data={token:'A'.repeat(64),expiresAt:new Date(Date.now()+120000).toISOString()};}

@@ -8,7 +8,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
  await page.addInitScript(()=>{window.vinceLinks=[];window.open=url=>{window.vinceLinks.push(url);return null;};});
  await page.route('**/BackEnd/api/v1/**',async route=>{
  const url=route.request().url();let data;
- if(url.endsWith('/sesion'))data={displayName:'Prueba',gestionUser:'test',canWriteDatabase:true,demo:false};
+ if(url.endsWith('/sesion'))data={displayName:'Prueba',gestionUser:'test',isGlobalUser:true,allowedOptions:[],profiles:[],canWriteDatabase:true,demo:false};
  else if(url.includes('/ordenes?'))data={rows:[],page:1,totalPages:1,totalRows:0,hasMore:false};
  else if(url.endsWith('/registro/catalogos'))data={conditions:[{code:'001',description:'CONTADO'},{code:'002',description:'CRÉDITO 30 DÍAS'}],discounts:[{code:'000',description:'SIN DESCUENTO'}],currencies:[{code:'USD',description:'DÓLARES'}],deliveryLocations:[{code:'001',description:'ALMACÉN PRINCIPAL'}],costCenters:[{code:'100',description:'LOGÍSTICA'}]};
  else if(url.endsWith('/registro/fabricas'))data=[{code:'HIA',description:'HIALPESA'}];

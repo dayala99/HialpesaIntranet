@@ -8,7 +8,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
  await page.addInitScript(()=>{window.vinceLinks=[];window.open=url=>{window.vinceLinks.push(url);return null;};});
  await page.route('**/BackEnd/api/v1/**',async route=>{
  const url=route.request().url();let data;
- if(url.endsWith('/sesion'))data={displayName:'Prueba',gestionUser:'test',canWriteDatabase:false,demo:false};
+ if(url.endsWith('/sesion'))data={displayName:'Prueba',gestionUser:'test',isGlobalUser:true,allowedOptions:[],profiles:[],canWriteDatabase:false,demo:false};
  else if(url.endsWith('/pos'))data=['PO-00054154'];
  else if(url.endsWith('/estado-apertura'))data={received};
  else if(url.endsWith('/preparar-apertura')){calls.push(route.request().postDataJSON());assert.equal(route.request().headers()['x-intranet-provider'],'1');data={token:'A'.repeat(64),expiresAt:new Date(Date.now()+120000).toISOString()};}

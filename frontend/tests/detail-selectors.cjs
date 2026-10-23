@@ -8,7 +8,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
  await page.addInitScript(()=>{window.vinceLinks=[];window.open=url=>{window.vinceLinks.push(url);return null;};});
  await page.route('**/BackEnd/api/v1/**',async route=>{
  const url=route.request().url();let data;
- if(url.endsWith('/sesion'))data={displayName:'Prueba',gestionUser:'test',canWriteDatabase:true,demo:false};
+ if(url.endsWith('/sesion'))data={displayName:'Prueba',gestionUser:'test',isGlobalUser:true,allowedOptions:[],profiles:[],canWriteDatabase:true,demo:false};
  else if(url.includes('/ordenes?'))data={rows:[{series:'002',number:'350118',class:'01',status:'P',supplier:'Test'}],page:1,totalPages:1,totalRows:1,hasMore:false};
  else if(url.endsWith('/ordenes/002/350118/grupos')){if(route.request().method()==='GET')data=[{code:'VCW-685',description:''}];else{calls.push(route.request().postDataJSON());data={};}}
  else if(url.includes('/selector-detalle?')){const u=new URL(url);if(!u.searchParams.get('group'))data=[{code:'VCW-677',description:'Grupo 1'},{code:'VNC-848',description:'Grupo 2'}];else if(!u.searchParams.get('productionOrder'))data=[{code:'J1781',description:'OP uno'},{code:'J2469',description:'OP dos'}];else data=[{code:'PT000500',description:'PRICE TICKET'}];}

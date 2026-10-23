@@ -1,0 +1,8 @@
+<h2 mat-dialog-title>{{data.mode==='fabric' ? 'Seleccionar tela alternativa' : 'Consumo de partidas por orden de corte'}}</h2>
+<mat-dialog-content>
+ <form *ngIf="data.mode==='fabric'" (ngSubmit)="load()"><label>Código o descripción de tela<input name="fabricSearch" [(ngModel)]="search" maxlength="100"></label><button class="primary" type="submit" [disabled]="busy||search.trim().length<2">Buscar telas</button></form>
+ <p role="status" *ngIf="busy">Consultando…</p><p role="alert" class="feedback error" *ngIf="error">{{error}}</p>
+ <ul *ngIf="data.mode==='fabric'"><li *ngFor="let fabric of fabrics"><button type="button" (click)="choose(fabric)">{{fabric.code}} · {{fabric.description}}</button></li></ul>
+ <div class="table-scroll" *ngIf="rows.length"><table><thead><tr><th *ngFor="let column of columns">{{column[1]}}</th></tr></thead><tbody><tr *ngFor="let row of rows"><td *ngFor="let column of columns">{{row[column[0]] ?? '—'}}</td></tr></tbody></table></div>
+ <p role="status" *ngIf="searched&&!rows.length&&!fabrics.length">No se encontraron registros.</p>
+</mat-dialog-content><mat-dialog-actions align="end"><button mat-dialog-close type="button">Cerrar</button></mat-dialog-actions>

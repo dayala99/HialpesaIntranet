@@ -6,16 +6,25 @@ namespace Intranet.Service;
 
 public sealed class GestionIdentity(IOptions<GestionOptions> options, IHostEnvironment environment)
 {
+    public const string GlobalUserCode = "programador04";
+    public bool IsGlobalUser(System.Security.Claims.ClaimsPrincipal principal)
+    {
+        if (IsDemo || principal.Identity?.IsAuthenticated != true) return false;
+        var code = principal.FindFirst(IntranetLogin.GestionUserClaim)?.Value;
+        if (string.IsNullOrWhiteSpace(code))
+            code = options.Value.WindowsUsers.FirstOrDefault(p => string.Equals(p.Key, principal.Identity.Name, StringComparison.OrdinalIgnoreCase)).Value;
+        return string.Equals(code?.Trim(), GlobalUserCode, StringComparison.OrdinalIgnoreCase);
+    }
     public bool CanRegister(System.Security.Claims.ClaimsPrincipal principal) => !IsDemo
         && options.Value.EnableOrderRegistration && principal.Identity?.IsAuthenticated == true
-        && (options.Value.WriteWindowsUsers.Contains(principal.Identity.Name ?? "", StringComparer.OrdinalIgnoreCase)
+        && (IsGlobalUser(principal) || options.Value.WriteWindowsUsers.Contains(principal.Identity.Name ?? "", StringComparer.OrdinalIgnoreCase)
             || (options.Value.AllowAllAuthenticatedWrites && !string.IsNullOrWhiteSpace(principal.FindFirst(IntranetLogin.GestionUserClaim)?.Value)));
     public bool IsDemo => environment.IsDevelopment() && options.Value.Mode == "Demo";
     public string? GetReadAllWindowsUser(System.Security.Claims.ClaimsPrincipal principal)
     {
         var name = principal.Identity?.Name;
         return principal.Identity?.IsAuthenticated == true && name is not null
-            && options.Value.ReadAllWindowsUsers.Contains(name, StringComparer.OrdinalIgnoreCase)
+            && (IsGlobalUser(principal) || options.Value.ReadAllWindowsUsers.Contains(name, StringComparer.OrdinalIgnoreCase))
             ? name : null;
     }
     public string GetUser(System.Security.Claims.ClaimsPrincipal principal)
