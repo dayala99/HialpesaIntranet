@@ -36,3 +36,9 @@ Desinstalación: TI puede quitar HKCU\Software\Classes\hialpesa-vince, HKCU\Soft
 Con OC, al terminar las cantidades pulsa Next y completa Customer Reference (serie-número), Courier, DHL (COURIER) e instrucciones 20418108151. Sin OC permanece en las cantidades y muestra "PO sin Orden de Compra, Proceso Terminado". Nunca pulsa Save Order.
 
 Con OC: después de completar Shipping and Billing, pulsa Next a Preview, despliega las tablas RFID y UPC y genera un Excel en Descargas/Reportes VINCE. Resumen: NP, PO, ESTILO, COD. COLOR, COLOR y PRECIO (MSRP). Incluye Detalle Preview por talla. El agente no pulsa Submit Order ni Save Order.
+
+## Prioridad de resultados
+
+Si la misma PO tiene Saved y Available For Callout, el agente prioriza un único Available For Callout y continúa con Create Order. Si no hay Available For Callout, utiliza un único Saved. Varios Available For Callout detienen el proceso para revisar la grilla.
+
+El paquete actualizado se prepara en Compilados\Agente.

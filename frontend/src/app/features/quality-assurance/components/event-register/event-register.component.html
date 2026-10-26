@@ -2,20 +2,20 @@
 <p role="alert" class="feedback error" *ngIf="error">{{error}}</p>
 <form (submit)="$event.preventDefault()"><fieldset [disabled]="busy"><div class="fields">
 <div class="batch-customer"><div class="batch-query"><label>Partida<input (keydown.enter)="$event.preventDefault();loadItems()" name="batch" [(ngModel)]="model.batch" (ngModelChange)="batchChanged()" maxlength="5" [disabled]="action!=='I'" required></label><button class="load-items" type="button" *ngIf="action==='I'" (click)="loadItems()" [disabled]="loading">{{loading?'Consultando…':'Consultar ítems'}}</button></div><label>Cliente<input name="customer" [value]="customer" readonly></label>
-<label>Evento<select name="eventCode" [(ngModel)]="model.eventCode" [disabled]="action!=='I'" required><option value="">Selecciona un evento</option><option *ngFor="let o of catalog(action==='I'?'validEvents':'events')" [value]="o.code">{{o.code}} · {{o.description}}</option></select></label></div>
+<app-catalog-combobox label="Evento" name="eventCode" [(ngModel)]="model.eventCode" [options]="catalog(action==='I'?'validEvents':'events')" [disabled]="busy||action!=='I'"></app-catalog-combobox></div>
 
 
 </div>
 <fieldset [disabled]="action==='D'"><div class="fields">
 <label>Fecha de evento<input type="date" name="date" [(ngModel)]="model.date" required></label>
 <label>Status<select name="status" [(ngModel)]="model.status" (ngModelChange)="statusChanged()" required><option *ngFor="let o of catalog('statuses')" [value]="o.code">{{o.description}}</option></select></label>
-<label>Auditor<select name="auditor" [(ngModel)]="model.auditor" required><option value="">Selecciona un auditor</option><option *ngFor="let o of catalog('auditors')" [value]="o.code">{{o.description}}</option></select></label>
+<app-catalog-combobox label="Auditor" name="auditor" [(ngModel)]="model.auditor" [options]="catalog('auditors')" [disabled]="busy||action==='D'"></app-catalog-combobox>
 <label>Resultado auditoría externa<select name="externalResult" [(ngModel)]="model.externalResult"><option value="">Sin resultado</option><ng-container *ngFor="let o of catalog('statuses')"><option *ngIf="o.code==='A'||o.code==='R'" [value]="o.code">{{o.description}}</option></ng-container></select></label>
-<label>Ubicación de reproceso<select name="location" [(ngModel)]="model.location" required><option value="">Selecciona una ubicación</option><option *ngFor="let o of catalog('locations')" [value]="o.code">{{o.code}} · {{o.description}}</option></select></label>
+<app-catalog-combobox label="Ubicación de reproceso" name="location" [(ngModel)]="model.location" [options]="catalog('locations')" [disabled]="busy||action==='D'"></app-catalog-combobox>
 <ng-container *ngIf="model.status==='R'||model.status==='P'">
-<label>Motivo<select name="reason" [(ngModel)]="model.reason" [required]="model.status==='R'"><option value="">Selecciona un motivo</option><option *ngFor="let o of catalog('reasons')" [value]="o.code">{{o.code}} · {{o.description}}</option></select></label>
-<label>Desviación<select name="deviation" [(ngModel)]="model.deviation"><option value="">Sin desviación</option><option *ngFor="let o of catalog('deviations')" [value]="o.code">{{o.code}} · {{o.description}}</option></select></label>
-<label>Causa<select name="cause" [(ngModel)]="model.cause"><option value="">Sin causa</option><option *ngFor="let o of catalog('causes')" [value]="o.code">{{o.code}} · {{o.description}}</option></select></label>
+<app-catalog-combobox label="Motivo" name="reason" [(ngModel)]="model.reason" [options]="catalog('reasons')" [disabled]="busy||action==='D'"></app-catalog-combobox>
+<app-catalog-combobox label="Desviación" name="deviation" [(ngModel)]="model.deviation" [options]="catalog('deviations')" [disabled]="busy||action==='D'"></app-catalog-combobox>
+<app-catalog-combobox label="Causa" name="cause" [(ngModel)]="model.cause" [options]="catalog('causes')" [disabled]="busy||action==='D'"></app-catalog-combobox>
 </ng-container>
 <label>Observaciones<textarea name="observations" [(ngModel)]="model.observations" maxlength="100" rows="3"></textarea></label>
 <label>Observación Producción<textarea name="productionObservations" [(ngModel)]="model.productionObservations" maxlength="100" rows="3"></textarea></label>

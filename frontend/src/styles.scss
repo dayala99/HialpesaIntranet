@@ -39,3 +39,6 @@ button .mat-icon,a .mat-icon{vertical-align:middle;flex-shrink:0;width:20px;heig
 .mat-mdc-dialog-content .po-options button:hover{background:#e8f2ed;border-color:#95b8a8}
 @media(max-width:540px){.mat-mdc-dialog-container .mat-mdc-dialog-title{padding:22px 20px 14px;font-size:19px}.mat-mdc-dialog-container .mat-mdc-dialog-content{padding:0 20px 22px}.mat-mdc-dialog-container .mat-mdc-dialog-actions{padding:15px 20px;flex-wrap:wrap}.mat-mdc-dialog-actions button,.mat-mdc-dialog-actions .button{flex:1;min-height:44px}}
 
+
+/* Indicate fields that cannot be edited, including controls inside dialogs. */
+input[readonly],textarea[readonly],input:disabled,select:disabled,textarea:disabled{background-color:#f0f2f3!important;color:#627174;opacity:1}

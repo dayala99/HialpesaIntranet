@@ -69,6 +69,7 @@
           },
           "configurations": {
             "production": {
+              "baseHref": "/FrontEnd/",
               "budgets": [
                 {
                   "type": "initial",
@@ -101,6 +102,7 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
+              "baseHref": "/FrontEnd/",
               "buildTarget": "intranet-web:build:production"
             },
             "development": {

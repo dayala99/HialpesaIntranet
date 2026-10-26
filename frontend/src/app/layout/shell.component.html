@@ -9,7 +9,7 @@
       <div id="logistics-menu" *ngIf="session.canAny('orders.create','orders.query','imports')" class="nav-submenu" [hidden]="!logisticsOpen">
         <a *ngIf="session.can('orders.create')" routerLink="/logistica/avios/nueva" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}"><mat-icon aria-hidden="true">add</mat-icon> Nueva orden de compra</a>
         <a *ngIf="session.can('orders.query')" routerLink="/logistica/avios" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}"><mat-icon aria-hidden="true">inventory_2</mat-icon> Consulta OC y PO</a>
-        <a *ngIf="session.can('imports')" routerLink="/logistica/importaciones" routerLinkActive="active"><mat-icon aria-hidden="true">flight_takeoff</mat-icon> Importaciones</a>
+        <a *ngIf="session.can('imports')" routerLink="/logistica/importaciones" routerLinkActive="active"><mat-icon aria-hidden="true">flight_takeoff</mat-icon> Control Importaciones</a>
       </div>
       <button class="nav-group-toggle" *ngIf="session.canAny('dyeing.batches')" type="button" (click)="dyeingOpen=!dyeingOpen" [attr.aria-expanded]="dyeingOpen" aria-controls="dyeing-menu"><mat-icon aria-hidden="true">palette</mat-icon><span class="nav-group-label">Tintorería</span><mat-icon class="nav-chevron" aria-hidden="true">{{dyeingOpen ? 'expand_more' : 'chevron_right'}}</mat-icon></button>
       <div id="dyeing-menu" *ngIf="session.canAny('dyeing.batches')" class="nav-submenu" [hidden]="!dyeingOpen">

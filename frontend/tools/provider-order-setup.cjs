@@ -10,11 +10,13 @@ async function openSelectedPo(page,po,setStage=()=>{}){
   if(!cells.some(text=>text.trim()===po))continue;
   const saved=row.getByRole('link',{name:'Saved',exact:true});
   if(await saved.count()===1)candidates.push({row,saved});
-  else if(cells.some(text=>normalize(text)==='AVAILABLE FOR CALLOUT'))candidates.push({row});
+  if(cells.some(text=>normalize(text)==='AVAILABLE FOR CALLOUT'))candidates.push({row,callout:true});
  }
  const saved=candidates.filter(x=>x.saved);
- if(saved.length>1||(!saved.length&&candidates.length!==1))throw new MatchError('No hay un resultado único Saved o Available For Callout para '+po+'. Revisa la grilla del proveedor.');
- const source=saved.length===1?'saved':'callout';
+ const callouts=candidates.filter(x=>x.callout);
+ // A new callout takes precedence over previously saved drafts for this PO.
+ if(callouts.length>1||(!callouts.length&&saved.length!==1))throw new MatchError('No hay un resultado único Available For Callout o Saved para '+po+'. Revisa la grilla del proveedor.');
+ const source=callouts.length===1?'callout':'saved';
  if(source==='saved'){
  setStage('opening-saved');
  // Resolve a remembered Shipping page before rendering it, using its own Edit Order link.
@@ -41,7 +43,7 @@ async function openSelectedPo(page,po,setStage=()=>{}){
  }
  else{
  setStage('creating-callout');
- const selected=candidates[0].row;
+ const selected=callouts[0].row;
  const checkbox=selected.locator('input[type=checkbox]');
  if(await checkbox.count()!==1||!await checkbox.isEnabled())throw new MatchError('No se pudo seleccionar Available For Callout de '+po+'.');
  // Only the requested PO can participate in Create Order.

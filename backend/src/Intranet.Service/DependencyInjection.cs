@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.AddScoped<IQualityEventService, QualityEventService>();
         services.AddScoped<IOrderRegistrationApplicationService, OrderRegistrationApplicationService>();
         services.AddScoped<IProviderService, ProviderService>(); services.AddScoped<IImportsService, ImportsService>();
+        services.AddScoped<IImportControlService, ImportControlService>();
         services.AddScoped<OrderRegistrationService>(); services.AddSingleton<QuantityCalculator>(); services.AddSingleton<ProviderAgentTickets>(); return services;
     }
 }

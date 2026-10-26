@@ -12,6 +12,7 @@ public static class DependencyInjection
         services.AddScoped<IAviosRepository, AviosRepository>();
         services.AddScoped<IRegistrationReadRepository, RegistrationReadRepository>();
         services.AddScoped<IImportsRepository, ImportsRepository>();
+        services.AddScoped<IImportControlRepository, ImportControlRepository>();
         services.AddScoped<IDyeingRepository, DyeingRepository>();
         services.AddScoped<IQualityControlRepository, QualityControlRepository>();
         services.AddScoped<IQualityEventRepository, QualityEventRepository>();

@@ -1,3 +1,4 @@
+import {SharedModule} from '../../../../shared/shared.module';
 import {MatDialog,MatDialogModule} from '@angular/material/dialog';
 import {ConfirmationDialogComponent,ConfirmationDialogData,ConfirmationDialogResult} from '../../../../shared/components/dialogs/confirmation-dialog/confirmation-dialog.component';
 import {CommonModule} from '@angular/common';
@@ -9,7 +10,7 @@ import {finalize} from 'rxjs';
 import {QualityEventsApiService} from '../../services/quality-events-api.service';
 import {EventOption,EventRow,EventUpdate} from '../../models/quality-event.models';
 import {apiError} from '../../../../core/http/api-error';
-@Component({selector:'app-event-register',standalone:true,imports:[CommonModule,FormsModule,MatIconModule,MatDialogModule],templateUrl:'./event-register.component.html',styleUrl:'./event-register.component.scss'})
+@Component({selector:'app-event-register',standalone:true,imports:[CommonModule,FormsModule,MatIconModule,MatDialogModule,SharedModule],templateUrl:'./event-register.component.html',styleUrl:'./event-register.component.scss'})
 export class EventRegisterComponent implements OnInit {
  @Input() row:EventRow|null=null;@Input() action='I';@Input() options:EventOption[]=[];@Input() initialEvent='';@Input() initialDate='';@Output() completed=new EventEmitter<boolean>();
  private dialog=inject(MatDialog);private api=inject(QualityEventsApiService);private destroyRef=inject(DestroyRef);busy=false;loading=false;error='';items:EventRow[]=[];loadedBatch='';customer='';

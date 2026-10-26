@@ -9,7 +9,7 @@ public sealed class PortalAccessService(IGestionAccessRepository repository,Gest
  public static IReadOnlyList<string> Map(IEnumerable<GestionOptionAccess> options){var grants=options.Select(x=>x.Application.Trim()+":"+x.Option.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);var keys=new List<string>();
  if(grants.Contains("07:mnuOrdComp"))keys.Add("orders.create");
  if(grants.Contains("07:mnuOrdComp")||grants.Contains("29:frmrptgest"))keys.Add("orders.query");
- if(grants.Contains("07:mOImportac"))keys.Add("imports");
+ if(grants.Contains("10:mnuImpAgr"))keys.Add("imports");
  if(grants.Contains("15:mnuPartOT"))keys.Add("dyeing.batches");
  if(grants.Contains("25:mCCTinto"))keys.Add("quality.events");
  if(grants.Contains("25:mEvTintoTe"))keys.Add("quality.unfinished");
