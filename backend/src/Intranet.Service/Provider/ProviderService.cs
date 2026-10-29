@@ -121,12 +121,16 @@ public sealed class ProviderService(GestionIdentity identity, IHostEnvironment e
         {
             if (browserProcess is { HasExited: false })
             {
+                var workerTools=Path.GetFullPath(Path.Combine(environment.ContentRootPath,"../../../frontend/tools"));
+                var workerStarted=browserProcess.StartTime.ToUniversalTime();
+                if(new[]{"provider-login.cjs","provider-remove-zero-skus.cjs","provider-quantities.cjs","provider-order-setup.cjs","provider-color-dialog.cjs"}.Select(file=>Path.Combine(workerTools,file)).Any(file=>System.IO.File.Exists(file)&&System.IO.File.GetLastWriteTimeUtc(file)>workerStarted))
+                    return BadRequest(new { title="La ventana automatizada usa una versión anterior. Cierra esa ventana de Avery/VINCE y vuelve a abrir el PO desde la intranet para cargar la actualización." });
                 string? reply;
                 try
                 {
                     await browserProcess.StandardInput.WriteLineAsync(payload);
                     await browserProcess.StandardInput.FlushAsync();
-                    reply = await browserProcess.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(180), ct);
+                    reply = await ProviderBrowserReply.ReadAsync(browserProcess.StandardOutput, ct);
                 }
                 catch
                 {
@@ -134,6 +138,7 @@ public sealed class ProviderService(GestionIdentity identity, IHostEnvironment e
                     browserProcess = null;
                     throw new ArgumentException("Se interrumpio la comunicacion con el navegador. Vuelve a intentarlo desde la intranet.");
                 }
+                if (reply?.Contains("\"cancelled\"") == true) return Ok(new { status="cancelled",message="Llenado cancelado en la ventana de Avery/VINCE. No se cambiaron cantidades." });
                 if (Confirmation(reply) is { } pending) return pending;
                 if (reply?.Contains("po-filled") == true) return Ok(new { status = "po-filled", message = "Cantidades de RFID y UPC Stickers completadas para " + selection.Po + ". No se ha pulsado Save Order ni se ha enviado el pedido." });
                 throw new ArgumentException(Failure(reply));
@@ -151,6 +156,7 @@ public sealed class ProviderService(GestionIdentity identity, IHostEnvironment e
             var root = Path.GetFullPath(Path.Combine(environment.ContentRootPath, "../../.."));
             var start = new ProcessStartInfo("node") { WorkingDirectory = Path.Combine(root, "frontend"), UseShellExecute = false, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
             start.ArgumentList.Add(Path.Combine(root, "frontend", "tools", "provider-login.cjs"));
+            start.Environment["AVERY_COLOR_CONFIRMATION_UI"] = "browser";
             start.Environment["AVERY_LOGIN_URL"] = loginUrl.AbsoluteUri;
             start.Environment["AVERY_USERNAME"] = username; start.Environment["AVERY_PASSWORD"] = password;
             var process = Process.Start(start) ?? throw new InvalidOperationException("No se pudo iniciar el navegador.");
@@ -159,8 +165,9 @@ public sealed class ProviderService(GestionIdentity identity, IHostEnvironment e
             await process.StandardInput.FlushAsync();
             _ = process.StandardError.ReadToEndAsync();
             string? result;
-            try { result = await process.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(180), ct); }
+            try { result = await ProviderBrowserReply.ReadAsync(process.StandardOutput, ct); }
             catch { if (!process.HasExited) process.Kill(true); browserProcess = null; throw new ArgumentException("La automatizacion excedio el tiempo de espera o se interrumpio. Vuelve a intentarlo desde la intranet."); }
+            if (result?.Contains("\"cancelled\"") == true) return Ok(new { status="cancelled",message="Llenado cancelado en la ventana de Avery/VINCE. No se cambiaron cantidades." });
             if (Confirmation(result) is { } pendingInitial) return pendingInitial;
             if (result?.Contains("signed-in") != true) { if (process.HasExited) browserProcess = null; return BadRequest(new { title = Failure(result) }); }
             return Ok(new { status = "signed-in", message = "VINCE: cantidades de RFID y UPC Stickers completadas para " + selection.Po + ". No se ha pulsado Save Order ni se ha enviado el pedido." });

@@ -42,3 +42,10 @@ Con OC: después de completar Shipping and Billing, pulsa Next a Preview, despli
 Si la misma PO tiene Saved y Available For Callout, el agente prioriza un único Available For Callout y continúa con Create Order. Si no hay Available For Callout, utiliza un único Saved. Varios Available For Callout detienen el proceso para revisar la grilla.
 
 El paquete actualizado se prepara en Compilados\Agente.
+
+## Selección de varios Saved (28/10/2026)
+
+Available For Callout conserva la prioridad. Cuando no existe Callout y hay varios Saved de la PO exacta, se compara la columna EDI_LOAD_DATE por día y se abre el Saved de fecha mayor. Si varios Saved tienen la misma fecha, se abre el último de ellos en el orden de la grilla. Cancelled y otras PO no participan. Si no se puede leer alguna fecha entre varios Saved, el agente detiene el proceso antes de hacer clic para evitar abrir un borrador incorrecto. Varios Available For Callout siguen requiriendo revisión.
+
+## Retiro de SKU en cero (28/10/2026)
+Después de completar y verificar cantidades, el agente revisa RFID y UPC Stickers. Selecciona únicamente las filas con Quantity To Order igual a cero y pulsa Remove SKU en cada pestaña que lo requiera. Antes de hacerlo limpia selecciones previas de filas. Comprueba que las filas restantes, sus cantidades y MSRP se conserven; si no se confirma la eliminación, detiene el flujo. Sin filas cero continúa sin pulsar Remove SKU. Esta limpieza se ejecuta en el llenado con OC y en po-required, antes de Shipping o del aviso final sin OC. El modo preserve-provider conserva su comportamiento de no modificar el pedido.

@@ -92,7 +92,8 @@ let activePage;let stage="starting";
    for(const plan of plans)if(await quantityInput(page,plan.id).inputValue()!==plan.value)throw Error('Quantity changed after tab switch');
    const msrpAfter=await page.locator('input[id^="oid_MSRP_IN_"]').evaluateAll(inputs=>inputs.map(x=>({id:x.id,value:x.value})));
    if(JSON.stringify(msrpBefore)!==JSON.stringify(msrpAfter))throw Error('MSRP changed unexpectedly');
-   require('fs').writeFileSync('test-results/avery-quantities.json',JSON.stringify({po,filled:plans.length,saved:false,rows:plans},null,2));
+   const removed=await require('./provider-remove-zero-skus.cjs').removeZeroSkus(page,value=>{stage=value;});
+   require('fs').writeFileSync('test-results/avery-quantities.json',JSON.stringify({po,filled:plans.length,saved:false,rows:plans,removedZeroSkus:removed},null,2));
 
 
  }

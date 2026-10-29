@@ -38,6 +38,10 @@ builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<ILoggerProvider>(services => new Intranet.Api.Logging.SharedErrorLogProvider(
+    builder.Configuration["ErrorLogging:Directory"] ?? Path.Combine(builder.Environment.ContentRootPath, "logs"),
+    Path.Combine(builder.Environment.ContentRootPath, "logs"),
+    services.GetRequiredService<IHttpContextAccessor>()));
 builder.Services.AddScoped<RequestActor>(services =>
 {
     var context = services.GetRequiredService<IHttpContextAccessor>().HttpContext ?? throw new InvalidOperationException("No hay una solicitud activa.");

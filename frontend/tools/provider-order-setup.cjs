@@ -1,6 +1,31 @@
 'use strict';
 const {MatchError}=require('./provider-quantities.cjs');
 const normalize=value=>String(value||'').replace(/\s+/g,' ').trim().toUpperCase();
+// EDI dates are compared by calendar day; equal dates use the last row in grid order.
+function ediDay(value){
+ const text=normalize(value);let year,month,day;let m=text.match(/^(\d{1,2})\s+([A-Z]{3,9})\s+(\d{4})(?:\s.*)?$/);
+ if(m){day=Number(m[1]);month=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'].indexOf(m[2].slice(0,3));year=Number(m[3]);}
+ else {m=text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);if(!m)return null;year=Number(m[1]);month=Number(m[2])-1;day=Number(m[3]);}
+ if(year<1900||month<0||month>11||day<1||day>31)return null;
+ const date=new Date(Date.UTC(year,month,day));return date.getUTCFullYear()===year&&date.getUTCMonth()===month&&date.getUTCDate()===day?date.getTime():null;
+}
+async function latestSaved(candidates,po){
+ if(candidates.length===1)return candidates[0];
+ let selected=null,latest=-Infinity;
+ for(const candidate of candidates){
+  const value=await candidate.row.evaluate(row=>{
+   const table=row.closest('table');if(!table)return null;
+   const headers=Array.from(table.rows).find(tr=>Array.from(tr.cells).some(cell=>cell.textContent.toUpperCase().replace(/[^A-Z]/g,'')==='EDILOADDATE'));
+   if(!headers)return null;
+   const index=Array.from(headers.cells).findIndex(cell=>cell.textContent.toUpperCase().replace(/[^A-Z]/g,'')==='EDILOADDATE');
+   return row.cells[index]?.textContent?.trim()??null;
+  });
+  const day=ediDay(value);
+  if(day===null)throw new MatchError('No se pudo leer EDI_LOAD_DATE de todos los Saved de '+po+'. Revisa las fechas de la grilla.');
+  if(day>=latest){latest=day;selected=candidate;}
+ }
+ return selected;
+}
 async function openSelectedPo(page,po,setStage=()=>{}){
  setStage('po-result');
  await page.waitForFunction(po=>Array.from(document.querySelectorAll('tr')).some(tr=>Array.from(tr.querySelectorAll('td')).some(td=>td.textContent.trim()===po)&&/Saved|Available\s+For\s+Callout/i.test(tr.textContent)),po,{timeout:20000});
@@ -15,8 +40,9 @@ async function openSelectedPo(page,po,setStage=()=>{}){
  const saved=candidates.filter(x=>x.saved);
  const callouts=candidates.filter(x=>x.callout);
  // A new callout takes precedence over previously saved drafts for this PO.
- if(callouts.length>1||(!callouts.length&&saved.length!==1))throw new MatchError('No hay un resultado único Available For Callout o Saved para '+po+'. Revisa la grilla del proveedor.');
+ if(callouts.length>1||(!callouts.length&&!saved.length))throw new MatchError('No hay un resultado único Available For Callout o Saved para '+po+'. Revisa la grilla del proveedor.');
  const source=callouts.length===1?'callout':'saved';
+ const selectedSaved=source==='saved'?await latestSaved(saved,po):null;
  if(source==='saved'){
  setStage('opening-saved');
  // Resolve a remembered Shipping page before rendering it, using its own Edit Order link.
@@ -36,9 +62,9 @@ async function openSelectedPo(page,po,setStage=()=>{}){
   if(!target){redirectError='El portal abrió Shipping, pero no expone un enlace directo Edit Order. No se avanzó para evitar el recorrido duplicado.';return route.abort();}
   return route.fulfill({status:302,headers:{location:target},body:''});
  };
- const rememberedShipping=/shipping/i.test(await saved[0].saved.getAttribute('href')||'');
+ const rememberedShipping=/shipping/i.test(await selectedSaved.saved.getAttribute('href')||'');
  if(rememberedShipping)await page.route('**/*',handler);
- try{await saved[0].saved.click();}finally{if(rememberedShipping)await page.unroute('**/*',handler);}
+ try{await selectedSaved.saved.click();}finally{if(rememberedShipping)await page.unroute('**/*',handler);}
  if(redirectError)throw new MatchError(redirectError);
  }
  else{
@@ -117,4 +143,4 @@ async function openSelectedPo(page,po,setStage=()=>{}){
  await page.getByRole('button',{name:/^Go To Edit Order$/i}).click();
  return source;
 }
-module.exports={openSelectedPo};
+module.exports={openSelectedPo,ediDay};

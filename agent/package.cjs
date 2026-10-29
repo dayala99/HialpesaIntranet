@@ -11,7 +11,7 @@ const runtimeTarget=path.join(output,'node.exe');
 const digest=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 if(!fs.existsSync(runtimeTarget)||digest(runtimeTarget)!==digest(process.execPath))fs.copyFileSync(process.execPath,runtimeTarget);
 fs.mkdirSync(path.join(output,'tools'),{recursive:true});
-for(const file of ['provider-preview.cjs','provider-shipping.cjs','provider-order-setup.cjs','provider-login.cjs','provider-color-dialog.cjs','provider-fields.cjs','provider-lifecycle.cjs','provider-auth.cjs','provider-quantities.cjs','provider-color-aliases.json'])fs.copyFileSync(path.join(root,'frontend/tools',file),path.join(output,'tools',file));
+for(const file of ['provider-remove-zero-skus.cjs','provider-preview.cjs','provider-shipping.cjs','provider-order-setup.cjs','provider-login.cjs','provider-color-dialog.cjs','provider-fields.cjs','provider-lifecycle.cjs','provider-auth.cjs','provider-quantities.cjs','provider-color-aliases.json'])fs.copyFileSync(path.join(root,'frontend/tools',file),path.join(output,'tools',file));
 for(const name of ['playwright','playwright-core'])fs.cpSync(path.join(root,'frontend/node_modules',name),path.join(output,'node_modules',name),{recursive:true});
 console.log('Agente preparado con Node y Playwright incluidos. Chrome debe estar instalado.');
 

@@ -17,7 +17,7 @@ public sealed record ImportControlDocument {
  public decimal Soles {get;set;}public decimal Dollars {get;set;}public decimal Other {get;set;}
  public decimal TotalSoles {get;set;}public decimal TotalDollars {get;set;}public decimal TotalOther {get;set;}
 }
-public sealed record ImportControlOrder([property:Required,StringLength(1)] string Warehouse,[property:Required,StringLength(3)] string Series,[property:Required,StringLength(6)] string Number);
-public sealed record ImportControlPolicy([property:Required,StringLength(12)] string Correlative);
+public sealed record ImportControlOrder([param:Required,StringLength(1)] string Warehouse,[param:Required,StringLength(3)] string Series,[param:Required,StringLength(6)] string Number);
+public sealed record ImportControlPolicy([param:Required,StringLength(12)] string Correlative);
 public sealed record ImportControlShipment(string Code,string Description,string Active,string Version);
-public sealed record ImportControlShipmentSave([property:RegularExpression("^[IUD]$")]string Action,[property:Required,StringLength(3)]string Code,[property:Required,StringLength(30)]string Description,string Version);
+public sealed record ImportControlShipmentSave([param:RegularExpression("^[IUD]$")]string Action,[param:Required,StringLength(3)]string Code,[param:Required,StringLength(30)]string Description,string Version);

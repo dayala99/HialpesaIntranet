@@ -4,7 +4,6 @@ import { ItemEditDialogComponent, ItemEditDialogData, ItemEditDialogResult } fro
 import { PoDetailDialogComponent, PoDetailDialogData, PoDetailDialogResult } from '../../components/dialogs/po-detail-dialog/po-detail-dialog.component';
 import { ManufacturingGroupsDialogComponent, ManufacturingGroupsDialogData, ManufacturingGroupsDialogResult } from '../../components/dialogs/manufacturing-groups-dialog/manufacturing-groups-dialog.component';
 import { PoSelectionDialogComponent, PoSelectionDialogData, PoSelectionDialogResult } from '../../../provider/components/dialogs/po-selection-dialog/po-selection-dialog.component';
-import { ColorConfirmationDialogComponent, ColorConfirmationDialogData } from '../../../provider/components/dialogs/color-confirmation-dialog/color-confirmation-dialog.component';
 import { AgentLauncherService } from '../../../provider/services/agent-launcher.service';
 import { AgentTicket } from '../../../provider/models/provider.models';
 import { PoApiService } from '../../services/po-api.service';
@@ -17,7 +16,6 @@ import { finalize, Subject, switchMap, timer, catchError, of, takeUntil } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PurchaseOrdersApiService } from '../../services/purchase-orders-api.service';
 import { apiError } from '../../../../core/http/api-error';
-import { ColorConfirmation } from '../../../provider/models/provider.models';
 import { PoDetailLine, EditableOrderItem, LinkedRequirement } from '../../models/purchase-order.models';
 import { SessionService } from '../../../../core/auth/session.service';
 import { ArticleRule, MatrixRow, OrderDetail, OrderItem, Preview, Requirement, OrderReference } from '../../models/purchase-order.models';
@@ -239,30 +237,15 @@ export class AviosComponent {
                 this.launchAgent(ticket);
                 return;
             }
-            this.gridMessage = 'Abriendo VINCE y completando ' + po + '…';
-            const approved: ColorConfirmation[] = [];
-            for (let attempt = 0; attempt < 6; attempt++) {
-                const result = await firstValueFrom(this.providerApi.providerLogin(reference, po, approved));
-                if (result.status !== 'confirmation-required') {
-                    this.gridMessage = result.message;
-                    return;
-                }
-                if (!result.confirmations?.length) {
-                    this.gridError = 'El proveedor no devolvio colores para confirmar.';
-                    this.gridMessage = '';
-                    return;
-                }
-                this.gridMessage = 'Esperando confirmacion de colores para ' + po;
-                const confirmed = await firstValueFrom(this.dialog.open<ColorConfirmationDialogComponent, ColorConfirmationDialogData, boolean>(ColorConfirmationDialogComponent, { width: '780px', maxWidth: '95vw', autoFocus: 'first-tabbable', restoreFocus: true, data: { po, confirmations: result.confirmations } }).afterClosed());
-                if (confirmed !== true) {
-                    this.gridMessage = 'Llenado cancelado. No se cambiaron cantidades.';
-                    return;
-                }
-                approved.push(...result.confirmations);
-                this.gridMessage = 'Validando equivalencias y completando ' + po + '...';
+            this.gridMessage = 'Continúa en la ventana automatizada de Avery/VINCE. Las confirmaciones de colores aparecerán allí.';
+            const result = await firstValueFrom(this.providerApi.providerLogin(reference, po));
+            if (result.status === 'confirmation-required') {
+                this.gridMessage = '';
+                this.gridError = 'Actualiza el backend local y vuelve a abrir VINCE para confirmar los colores en la ventana automatizada.';
+                return;
             }
-            this.gridMessage = '';
-            this.gridError = 'Los colores del proveedor cambiaron durante la confirmacion. Consulta nuevamente el PO.';
+            this.gridMessage = result.message;
+
         }
         catch (e) {
             this.gridMessage = '';

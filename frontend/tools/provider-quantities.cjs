@@ -62,7 +62,7 @@ function planQuantities(rows,portal,po,confirmedColors=[]){
   if(matches.length===0&&styleRows.length&&styleRows.some(x=>color(x.combination)===targetColor)&&row.poQuantity===0&&String(row.quantity).trim()!==''&&Number(row.quantity)===0){
    const zeroKey=['zero',row.kind,norm(row.style),norm(row.colorCode),norm(row.size)].join('|');
    if(used.has(zeroKey))fail('Hay una fila sin cantidad duplicada en el proveedor.',row);used.add(zeroKey);
-   const proposal={style:norm(row.style),colorCode:norm(row.colorCode),providerColor:name+' | talla '+norm(row.size)+' | '+row.kind,gestionColor:'Sin fila en Excel. PO Quantity y Quantity To Order son 0. Conservar esta fila en 0 sin modificar.'};
+   const proposal={style:norm(row.style),colorCode:norm(row.colorCode),providerColor:name+' | talla '+norm(row.size)+' | '+row.kind,gestionColor:'Sin fila en Excel. PO Quantity y Quantity To Order son 0. La fila con Quantity To Order 0 se eliminará mediante Remove SKU después del llenado.'};
    if(!confirmedColors.some(c=>confirmationKey(c)===confirmationKey(proposal)))pending.set(confirmationKey(proposal),proposal);
    continue;
   }
@@ -107,4 +107,5 @@ function planQuantities(rows,portal,po,confirmedColors=[]){
  return plan;
 }
 module.exports={planQuantities,MatchError,ColorConfirmationRequired};
+
 

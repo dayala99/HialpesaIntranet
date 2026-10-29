@@ -1,0 +1,5 @@
+import { Component, Input, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { AnalysisPdfData, AnalysisPdfService } from './analysis-pdf.service';
+@Component({selector:'app-analysis-pdf-export',standalone:true,imports:[CommonModule],template:`<div class="pdf-actions"><p *ngIf="error" role="alert">{{error}}</p><button type="button" (click)="download()" [disabled]="busy">{{busy?'Generando PDF…':'Exportar a PDF'}}</button></div>`,styles:[`.pdf-actions{display:flex;justify-content:flex-end;align-items:center;gap:16px;margin-bottom:14px}.pdf-actions p{font-size:12px;color:#a33025}@media(max-width:650px){.pdf-actions{flex-wrap:wrap}}`]})
+export class AnalysisPdfExportComponent { @Input({required:true})data!:AnalysisPdfData;private service=inject(AnalysisPdfService);busy=false;error='';async download(){if(this.busy)return;this.busy=true;this.error='';try{await this.service.download(structuredClone(this.data));}catch{this.error='No se pudo generar el PDF. Intenta nuevamente.';}finally{this.busy=false;}} }

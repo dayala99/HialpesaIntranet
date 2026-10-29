@@ -7,9 +7,16 @@
       <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}"><mat-icon aria-hidden="true">home</mat-icon> Inicio</a>
       <button class="nav-group-toggle" *ngIf="session.canAny('orders.create','orders.query','imports')" type="button" (click)="logisticsOpen=!logisticsOpen" [attr.aria-expanded]="logisticsOpen" aria-controls="logistics-menu"><mat-icon aria-hidden="true">inventory_2</mat-icon><span class="nav-group-label">Logística</span><mat-icon class="nav-chevron" aria-hidden="true">{{logisticsOpen ? 'expand_more' : 'chevron_right'}}</mat-icon></button>
       <div id="logistics-menu" *ngIf="session.canAny('orders.create','orders.query','imports')" class="nav-submenu" [hidden]="!logisticsOpen">
-        <a *ngIf="session.can('orders.create')" routerLink="/logistica/avios/nueva" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}"><mat-icon aria-hidden="true">add</mat-icon> Nueva orden de compra</a>
-        <a *ngIf="session.can('orders.query')" routerLink="/logistica/avios" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}"><mat-icon aria-hidden="true">inventory_2</mat-icon> Consulta OC y PO</a>
-        <a *ngIf="session.can('imports')" routerLink="/logistica/importaciones" routerLinkActive="active"><mat-icon aria-hidden="true">flight_takeoff</mat-icon> Control Importaciones</a>
+        <button class="nav-group-toggle nav-subgroup-toggle" *ngIf="session.canAny('orders.create','imports')" type="button" (click)="logisticsMaintenanceOpen=!logisticsMaintenanceOpen" [attr.aria-expanded]="logisticsMaintenanceOpen" aria-controls="logistics-maintenance-menu"><mat-icon aria-hidden="true">edit_note</mat-icon><span class="nav-group-label">Mantenimientos</span><mat-icon class="nav-chevron" aria-hidden="true">{{logisticsMaintenanceOpen ? 'expand_more' : 'chevron_right'}}</mat-icon></button>
+        <div id="logistics-maintenance-menu" *ngIf="session.canAny('orders.create','imports')" class="nav-submenu nav-nested-menu" [hidden]="!logisticsMaintenanceOpen">
+          <a *ngIf="session.can('orders.create')" routerLink="/logistica/avios/nueva" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}"><mat-icon aria-hidden="true">add</mat-icon> Nueva Orden de Compra</a>
+          <a *ngIf="session.can('imports')" routerLink="/logistica/importaciones" routerLinkActive="active"><mat-icon aria-hidden="true">flight_takeoff</mat-icon> Control de Importaciones</a>
+        </div>
+        <button class="nav-group-toggle nav-subgroup-toggle" *ngIf="session.can('orders.query')" type="button" (click)="logisticsQueriesOpen=!logisticsQueriesOpen" [attr.aria-expanded]="logisticsQueriesOpen" aria-controls="logistics-queries-menu"><mat-icon aria-hidden="true">search</mat-icon><span class="nav-group-label">Consultas</span><mat-icon class="nav-chevron" aria-hidden="true">{{logisticsQueriesOpen ? 'expand_more' : 'chevron_right'}}</mat-icon></button>
+        <div id="logistics-queries-menu" *ngIf="session.can('orders.query')" class="nav-submenu nav-nested-menu" [hidden]="!logisticsQueriesOpen">
+          <a routerLink="/logistica/avios" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}"><mat-icon aria-hidden="true">inventory_2</mat-icon> Consulta OC y PO</a>
+          <a routerLink="/logistica/analiticas" routerLinkActive="active"><mat-icon aria-hidden="true">hub</mat-icon> Analíticas</a>
+        </div>
       </div>
       <button class="nav-group-toggle" *ngIf="session.canAny('dyeing.batches')" type="button" (click)="dyeingOpen=!dyeingOpen" [attr.aria-expanded]="dyeingOpen" aria-controls="dyeing-menu"><mat-icon aria-hidden="true">palette</mat-icon><span class="nav-group-label">Tintorería</span><mat-icon class="nav-chevron" aria-hidden="true">{{dyeingOpen ? 'expand_more' : 'chevron_right'}}</mat-icon></button>
       <div id="dyeing-menu" *ngIf="session.canAny('dyeing.batches')" class="nav-submenu" [hidden]="!dyeingOpen">

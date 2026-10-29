@@ -4,6 +4,7 @@ import {Component,inject} from '@angular/core';
 export class HomeComponent {
  readonly session=inject(SessionService);
  private readonly options=[
+  {permission:'orders.query',group:'Logística',title:'Analíticas',path:'/logistica/analiticas',icon:'hub',description:'Consulta la cantidad programada por NP.'},
   {permission:'orders.create',group:'Logística',title:'Nueva orden de compra',path:'/logistica/avios/nueva',icon:'add',description:'Registra una nueva orden de compra.'},
   {permission:'orders.query',group:'Logística',title:'Consulta OC y PO',path:'/logistica/avios',icon:'inventory_2',description:'Consulta órdenes de compra y PO de Gestión.'},
   {permission:'imports',group:'Logística',title:'Importaciones',path:'/logistica/importaciones',icon:'flight_takeoff',description:'Consulta y gestiona las importaciones.'},

@@ -79,6 +79,7 @@ async function writeReport(command,snapshot,plans,folder=process.env.VINCE_REPOR
  for(const r of records.values())summary.addRow([r.np,command.po,r.style,r.colorCode,r.color,r.price]);
  summary.getColumn(6).numFmt='0.00';
  for(const sheet of [summary,detail]){sheet.views=[{state:'frozen',ySplit:1}];sheet.autoFilter={from:'A1',to:{row:sheet.rowCount,column:sheet.columnCount}};sheet.eachRow((row,index)=>{row.height=index===1?32:21;row.eachCell({includeEmpty:true},cell=>{cell.font={name:'Arial',size:10,bold:index===1};cell.alignment={vertical:'middle',horizontal:'center',wrapText:true};cell.border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};});});}
- fs.mkdirSync(folder,{recursive:true});const name='OC '+command.series+'-'+command.number;let file=path.join(folder,name+'.xlsx');for(let copy=2;fs.existsSync(file);copy++)file=path.join(folder,name+' ('+copy+').xlsx');await book.xlsx.writeFile(file);return file;
+ fs.mkdirSync(folder,{recursive:true});const name='OC '+command.series+'-'+command.number+' - '+command.po;let file=path.join(folder,name+'.xlsx');for(let copy=2;fs.existsSync(file);copy++)file=path.join(folder,name+' ('+copy+').xlsx');await book.xlsx.writeFile(file);return file;
 }
 module.exports={openPreview,writeReport};
+

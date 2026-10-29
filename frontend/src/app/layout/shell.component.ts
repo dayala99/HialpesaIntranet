@@ -6,6 +6,8 @@ export class ShellComponent {
     session = inject(SessionService);
     menuOpen = window.matchMedia('(min-width: 1025px)').matches;
     logisticsOpen = true;
+    logisticsMaintenanceOpen = true;
+    logisticsQueriesOpen = true;
     dyeingOpen = true;
     qualityAssuranceOpen = true;
     private router = inject(Router);

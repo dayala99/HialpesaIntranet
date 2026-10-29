@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 namespace Intranet.Entity;
-public sealed record ImportControlProvision([property:Required,RegularExpression("^[A-F0-9]{64}$")]string Version,[property:Required,RegularExpression("^(provision|reverse)$")]string Action);
+public sealed record ImportControlProvision([param:Required,RegularExpression("^[A-F0-9]{64}$")]string Version,[param:Required,RegularExpression("^(provision|reverse)$")]string Action);
 public sealed record ImportControlProvisionResult(string Number,string Action,string Status);
 public static class ImportControlProvisioning {
  public static string ActionForStatus(string status)=>status.Trim() switch{"R"=>"provision","P"=>"reverse",_=>throw new ArgumentException("El estado de la importación no permite provisionar ni revertir la provisión.")};
