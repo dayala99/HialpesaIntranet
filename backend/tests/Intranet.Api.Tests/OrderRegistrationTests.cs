@@ -118,6 +118,36 @@ public sealed class OrderRegistrationTests
         Assert.False(Validator.TryValidateObject(request,new ValidationContext(request),new List<ValidationResult>(),true));
     }
 
+    [Fact]public async Task BatchAggregatesSameItemAcrossNpsAndRoundsGeneratedSequence(){
+        var one=Candidate("a",11);var two=Candidate("b",16) with{ProductionOrder="J2454"};var fake=new FakeSession{BatchCandidates=[one,two]};
+        var result=await new OrderRegistrationService(new FakeGateway(fake)).AddBatch(Reference,new(){Lines=[new(){ProductionOrder=one.ProductionOrder,ItemCode=one.ItemCode,RequirementKeys=[one.Key],UnitPrice=3.25m},new(){ProductionOrder=two.ProductionOrder,ItemCode=two.ItemCode,RequirementKeys=[two.Key],UnitPrice=3.25m}]},"tester","DOMAIN\\tester",default);
+        Assert.Equal(2,result.RequirementsAdded);Assert.Equal(1,result.ItemsAdded);Assert.Equal(27,result.RequiredTotal);Assert.Equal(30,result.PurchaseTotal);Assert.Equal(("001",30m,3.25m),fake.Adjusted.Single());Assert.Equal(1,fake.Events.Count(x=>x=="commit"));
+    }
+    [Fact]public async Task BatchKeepsIndependentPricesForDifferentItems(){
+        var one=Candidate("a");var two=Candidate("b",16) with{ItemCode="PT000575"};var fake=new FakeSession{BatchCandidates=[one,two]};
+        var result=await new OrderRegistrationService(new FakeGateway(fake)).AddBatch(Reference,new(){Lines=[new(){ProductionOrder=one.ProductionOrder,ItemCode=one.ItemCode,RequirementKeys=[one.Key],UnitPrice=3m},new(){ProductionOrder=two.ProductionOrder,ItemCode=two.ItemCode,RequirementKeys=[two.Key],UnitPrice=7m}]},"tester","DOMAIN\\tester",default);
+        Assert.Equal(2,result.ItemsAdded);Assert.Equal(new[]{3m,7m},fake.Adjusted.Select(x=>x.Price));Assert.Equal(new[]{15m,20m},fake.Adjusted.Select(x=>x.Quantity));Assert.True(fake.Committed);
+    }
+    [Fact]public async Task StaleLastNpRejectsEntireBatchBeforeAnyInsert(){
+        var fake=new FakeSession{BatchCandidates=[Candidate("a")]};
+        await Assert.ThrowsAsync<RegistrationConflictException>(()=>new OrderRegistrationService(new FakeGateway(fake)).AddBatch(Reference,new(){Lines=[new(){ProductionOrder="J2453",ItemCode="PT000574",RequirementKeys=["a"],UnitPrice=3m},new(){ProductionOrder="J2454",ItemCode="PT000574",RequirementKeys=["missing"],UnitPrice=3m}]},"tester","DOMAIN\\tester",default));
+        Assert.Empty(fake.Inserted);Assert.False(fake.Committed);Assert.Contains("dispose",fake.Events);
+    }
+    [Fact]public async Task BatchRejectsInconsistentPricesForSameItemBeforeOpeningTransaction(){
+        var fake=new FakeSession();await Assert.ThrowsAsync<ArgumentException>(()=>new OrderRegistrationService(new FakeGateway(fake)).AddBatch(Reference,new(){Lines=[new(){ProductionOrder="J2453",ItemCode="PT000574",RequirementKeys=["a"],UnitPrice=3m},new(){ProductionOrder="J2454",ItemCode="PT000574",RequirementKeys=["b"],UnitPrice=4m}]},"tester","DOMAIN\\tester",default));Assert.Empty(fake.Events);
+    }
+    [Fact]public async Task BatchRejectsDuplicateKeysAcrossNps(){
+        var fake=new FakeSession();await Assert.ThrowsAsync<ArgumentException>(()=>new OrderRegistrationService(new FakeGateway(fake)).AddBatch(Reference,new(){Lines=[new(){ProductionOrder="J2453",ItemCode="PT000574",RequirementKeys=["same"],UnitPrice=3m},new(){ProductionOrder="J2454",ItemCode="PT000574",RequirementKeys=["same"],UnitPrice=3m}]},"tester","DOMAIN\\tester",default));Assert.Empty(fake.Events);
+    }
+    [Fact]public async Task LaterItemFailureDoesNotCommitEarlierItems(){
+        var one=Candidate("a");var two=Candidate("b") with{ItemCode="PT000575"};var fake=new FakeSession{BatchCandidates=[one,two],FailOnInsert=2};
+        await Assert.ThrowsAsync<InvalidOperationException>(()=>new OrderRegistrationService(new FakeGateway(fake)).AddBatch(Reference,new(){Lines=[new(){ProductionOrder=one.ProductionOrder,ItemCode=one.ItemCode,RequirementKeys=[one.Key],UnitPrice=3m},new(){ProductionOrder=two.ProductionOrder,ItemCode=two.ItemCode,RequirementKeys=[two.Key],UnitPrice=7m}]},"tester","DOMAIN\\tester",default));
+        Assert.Single(fake.Adjusted);Assert.False(fake.Committed);Assert.Contains("dispose",fake.Events);
+    }
+    [Fact]public async Task BatchLimitAppliesToCombinedRequirements(){
+        var fake=new FakeSession();await Assert.ThrowsAsync<ArgumentException>(()=>new OrderRegistrationService(new FakeGateway(fake)).AddBatch(Reference,new(){Lines=[new(){ProductionOrder="J2453",ItemCode="PT000574",RequirementKeys=Enumerable.Range(0,300).Select(x=>"a"+x).ToList(),UnitPrice=3m},new(){ProductionOrder="J2454",ItemCode="PT000574",RequirementKeys=Enumerable.Range(0,300).Select(x=>"b"+x).ToList(),UnitPrice=3m}]},"tester","DOMAIN\\tester",default));Assert.Empty(fake.Events);
+    }
+
     private sealed class FakeGateway(FakeSession session):IOrderWriteGateway
     {
         public Task<IOrderWriteSession> Begin(string gestionUser,string windowsUser,CancellationToken ct)=>Task.FromResult<IOrderWriteSession>(session);
@@ -130,6 +160,7 @@ public sealed class OrderRegistrationTests
         public bool Committed,FailGroup,FailAdjustment;
         public string Status="P";
         public PendingRequirement CandidateRow=Candidate();
+        public List<PendingRequirement>? BatchCandidates;public int FailOnInsert;
         public Task<OrderReference> CreateHeader(CreateOrderRequest request,CancellationToken ct){Events.Add("header");return Task.FromResult(Reference);}
         public Task RemoveRequirements(OrderReference order,string sequence,IReadOnlyList<string> keys,CancellationToken ct){Events.Add("remove-requirements");return Task.CompletedTask;}
         public Task ChangeItem(OrderReference order,string sequence,UpdateOrderItemRequest? request,CancellationToken ct){Events.Add(request is null?"delete-item":"update-item");return Task.CompletedTask;}
@@ -137,9 +168,9 @@ public sealed class OrderRegistrationTests
         public Task RemoveGroup(OrderReference order,string group,CancellationToken ct){Events.Add("remove-group");return Task.CompletedTask;}
         public Task LinkGroup(OrderReference order,string group,CancellationToken ct){Events.Add("group");if(FailGroup)throw new InvalidOperationException("fake group error");return Task.CompletedTask;}
         public Task<OrderRegistrationHeader> LockOrder(OrderReference order,CancellationToken ct){Events.Add("lock");return Task.FromResult(new OrderRegistrationHeader(order.Series,order.Number,"P",Status,"01","VNC-001"));}
-        public Task<IReadOnlyList<PendingRequirement>> Pending(OrderRegistrationHeader order,string op,string item,CancellationToken ct)=>Task.FromResult<IReadOnlyList<PendingRequirement>>([CandidateRow]);
-        public Task<IReadOnlyList<SavedItem>> Items(OrderReference order,CancellationToken ct)=>Task.FromResult<IReadOnlyList<SavedItem>>(Inserted.Count==0?[]:[new("001",Inserted.Sum(r=>r.Required),0)]);
-        public Task InsertRequirement(OrderReference order,string previous,PendingRequirement requirement,CancellationToken ct){Inserted.Add(requirement);return Task.CompletedTask;}
+        public Task<IReadOnlyList<PendingRequirement>> Pending(OrderRegistrationHeader order,string op,string item,CancellationToken ct)=>Task.FromResult<IReadOnlyList<PendingRequirement>>(BatchCandidates is null?[CandidateRow]:BatchCandidates.Where(x=>x.ProductionOrder==op&&x.ItemCode==item).ToList());
+        public Task<IReadOnlyList<SavedItem>> Items(OrderReference order,CancellationToken ct)=>Task.FromResult<IReadOnlyList<SavedItem>>(Inserted.GroupBy(x=>x.ItemCode).Select((g,i)=>new SavedItem((i+1).ToString("000"),g.Sum(x=>x.Required),0)).ToList());
+        public Task InsertRequirement(OrderReference order,string previous,PendingRequirement requirement,CancellationToken ct){if(FailOnInsert>0&&Inserted.Count+1==FailOnInsert)throw new InvalidOperationException("fake insert failure");Inserted.Add(requirement);return Task.CompletedTask;}
         public Task SetPurchase(OrderReference order,string sequence,decimal quantity,decimal unitPrice,CancellationToken ct){if(FailAdjustment)throw new InvalidOperationException("fake adjustment error");Adjusted.Add((sequence,quantity,unitPrice));return Task.CompletedTask;}
         public Task Commit(CancellationToken ct){Committed=true;Events.Add("commit");return Task.CompletedTask;}
         public ValueTask DisposeAsync(){Events.Add("dispose");return ValueTask.CompletedTask;}

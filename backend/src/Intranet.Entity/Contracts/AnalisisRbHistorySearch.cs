@@ -1,0 +1,4 @@
+namespace Intranet.Entity;
+public sealed class AnalisisRbHistorySearchRow {public long Id{get;set;}public string Np{get;set;}="";public int Revision{get;set;}public string Action{get;set;}="";public int ProgrammedQuantity{get;set;}public decimal CommercialPrice{get;set;}public decimal SewingTime{get;set;}public decimal UsedTime{get;set;}public decimal ServicePrice{get;set;}public string GestionUser{get;set;}="";public DateTime SavedAtUtc{get;set;}public string? GarmentType{get;set;}public string? SnapshotJson{get;set;}}
+public sealed record AnalisisRbHistorySearchPage(IReadOnlyList<AnalisisRbHistorySearchRow> Rows,bool HasMore,long? NextCursor);
+public interface IAnalisisRbHistorySearchRepository {Task<AnalisisRbHistorySearchPage> Search(string? np,decimal? price,decimal? time,string? type,long? cursor,CancellationToken ct);Task<IReadOnlyList<AnalisisRbType>> Types(CancellationToken ct);}

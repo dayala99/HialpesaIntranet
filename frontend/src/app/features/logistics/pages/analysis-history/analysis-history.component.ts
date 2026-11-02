@@ -14,6 +14,7 @@ import { HistoryPage, HistoryRow, SavedSnapshot } from '../integrator/analysis.m
 export class AnalysisHistoryComponent {
  private http=inject(HttpClient);private destroy=inject(DestroyRef);private route=inject(ActivatedRoute);
  private url=environment.apiBaseUrl+'/logistica/analisis-rb/historial';
+ fromSearch=this.route.snapshot.queryParamMap.get('from')==='search';private openedInitial=false;
  np=(this.route.snapshot.queryParamMap.get('np')??'').trim().toUpperCase();
  busy=false;error='';rows:HistoryRow[]=[];page=1;totalPages=1;viewedHistory:HistoryRow|null=null;snapshot:SavedSnapshot|null=null;
  get analysisTotalTime(){return this.snapshot?.sectorAnalysis?.totalTime??this.current?.sewingTime??null;}
@@ -21,7 +22,7 @@ export class AnalysisHistoryComponent {
  get usedTime(){return this.snapshot?.usedTime??null;}get servicePrice(){return this.snapshot?.servicePrice??null;}get otherExpenses(){return this.snapshot?.otherExpenses??null;}
  get today(){return this.snapshot?.analysisDate.slice(0,10).split('-').reverse().join('/')??'';}
  ngOnInit(){if(!/^[A-Z0-9]{5}$/.test(this.np)){this.error='Ingresa al historial desde la consulta de una NP válida.';return;}this.load(1);}
- load(page:number){if(this.busy)return;this.busy=true;this.error='';this.http.get<HistoryPage>(this.url,{params:{np:this.np,page},withCredentials:true}).pipe(takeUntilDestroyed(this.destroy)).subscribe({next:result=>{this.busy=false;this.rows=result.rows;this.page=result.page;this.totalPages=result.totalPages;},error:error=>{this.busy=false;this.error=apiError(error);}});}
+ load(page:number){if(this.busy)return;this.busy=true;this.error='';this.http.get<HistoryPage>(this.url,{params:{np:this.np,page},withCredentials:true}).pipe(takeUntilDestroyed(this.destroy)).subscribe({next:result=>{this.busy=false;this.rows=result.rows;this.page=result.page;this.totalPages=result.totalPages;const id=Number(this.route.snapshot.queryParamMap.get('id'));if(!this.openedInitial&&Number.isSafeInteger(id)&&id>0){this.openedInitial=true;this.view({id} as HistoryRow);}},error:error=>{this.busy=false;this.error=apiError(error);}});}
  view(row:HistoryRow){if(this.busy)return;this.busy=true;this.error='';this.snapshot=null;this.viewedHistory=null;this.http.get<HistoryPage>(this.url,{params:{np:this.np,id:row.id},withCredentials:true}).pipe(takeUntilDestroyed(this.destroy)).subscribe({next:result=>{this.busy=false;try{const saved=result.rows[0];if(!saved?.snapshotJson)throw new Error();const snapshot=JSON.parse(saved.snapshotJson) as SavedSnapshot;if(snapshot.source?.np!==this.np||!snapshot.calculated)throw new Error();this.snapshot=snapshot;this.viewedHistory=saved;}catch{this.error='No se pudo leer la información del análisis guardado.';}},error:error=>{this.busy=false;this.error=apiError(error);}});}
  actionLabel(action:string){return action==='D'?'Eliminado':action==='U'?'Corregido':'Guardado';}
 }

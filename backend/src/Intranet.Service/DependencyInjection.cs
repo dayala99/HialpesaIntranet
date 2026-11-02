@@ -6,6 +6,10 @@ public static class DependencyInjection
     public static IServiceCollection AddIntranetServices(this IServiceCollection services)
     {
         services.AddScoped<GestionIdentity>();
+        services.AddScoped<IPcpAnaliticasService,PcpAnaliticasService>();
+        services.AddSingleton<AnalisisRbPendingCache>();
+        services.AddScoped<IAnalisisRbPendingService, AnalisisRbPendingService>();
+        services.AddScoped<IAnalisisRbHistorySearchService, AnalisisRbHistorySearchService>();
         services.AddScoped<IAnalisisRbOperationsService, AnalisisRbOperationsService>();
         services.AddScoped<IAnalisisRbImageService, AnalisisRbImageService>();
         services.AddScoped<IAnalisisRbService, AnalisisRbService>();

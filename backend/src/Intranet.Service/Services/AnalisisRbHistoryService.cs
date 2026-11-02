@@ -1,7 +1,7 @@
 using Intranet.Entity;
 using System.Text.RegularExpressions;
 namespace Intranet.Service;
-public sealed class AnalisisRbHistoryService(IAnalisisRbHistoryRepository repository,GestionIdentity identity,RequestActor actor):ApplicationService(actor),IAnalisisRbHistoryService
+public sealed class AnalisisRbHistoryService(IAnalisisRbHistoryRepository repository,GestionIdentity identity,RequestActor actor,IPcpAnaliticasRepository? preparations=null):ApplicationService(actor),IAnalisisRbHistoryService
 {
  public static AnalisisRbSnapshot BuildSnapshot(AnalisisRbSave request,DateTime analysisDate)
  {
@@ -38,12 +38,14 @@ public sealed class AnalisisRbHistoryService(IAnalisisRbHistoryRepository reposi
   var commercial=request.UsedTime*price/total;var difference=commercial-request.ServicePrice;
   var complete=sector?.IsComplete??(partial is null&&total==request.UsedTime);
   var calculated=new AnalisisRbCalculated(price/total,commercial,request.ServicePrice/request.UsedTime,difference,commercial==0?null:difference/commercial,total-request.UsedTime,complete?"TIEMPO COMPLETO":"TIEMPO PARCIAL",complete?(sector is null?"COSTURA COMPLETA":sector.SectorName.ToUpperInvariant()+(sector.Sector=="CS"?" COMPLETA":" COMPLETO")):(sector?.SectorName.ToUpperInvariant()??partial?.SectorName.ToUpperInvariant()??"COSTURA")+" PARCIAL",request.ServicePrice+request.OtherExpenses);
-  return new(source with{Np=np},request.UsedTime,request.ServicePrice,request.OtherExpenses,calculated,analysisDate.Date,sector is not null?"Libro1-2026-10-v3-sector":partial is null?"Libro1-2026-10-v1":"Libro1-2026-10-v2-parcial"){PartialSelection=partial,Requotation=requotation,SectorAnalysis=sector};
+  return new(source with{Np=np},request.UsedTime,request.ServicePrice,request.OtherExpenses,calculated,analysisDate.Date,sector is not null?"Libro1-2026-10-v3-sector":partial is null?"Libro1-2026-10-v1":"Libro1-2026-10-v2-parcial"){PreparationId=request.PreparationId,PartialSelection=partial,Requotation=requotation,SectorAnalysis=sector};
  }
  public async Task<ServiceResult> Save(AnalisisRbSave request,CancellationToken ct)
  {
   var user=identity.GetUser(User);
   if(!identity.CanRegister(User)||!Actor.WriteRequested)throw new UnauthorizedAccessException();
+  if(request.Source is null)throw new ArgumentException("Consulta una NP antes de guardar.");
+  if(request.PreparationId.HasValue){if(request.PreparationId<=0||preparations==null)throw new ArgumentException("Envío PCP inválido.");var page=await preparations.Read(null,request.PreparationId,null,null,ct);var entry=page.Rows.SingleOrDefault()??throw new ArgumentException("No se encontró el envío PCP.");PcpAnaliticasService.ValidateForAnalysis(request,entry);}
   var snapshot=BuildSnapshot(request,DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-5)).Date);
   return Ok(await repository.Insert(request.RequestId,snapshot,user,Actor.TraceIdentifier,ct));
  }

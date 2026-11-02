@@ -50,32 +50,44 @@ public sealed class OrderRegistrationService(IOrderWriteGateway gateway)
         await session.Commit(ct);
         return order;
     }
-    public async Task<DetailsSavedResponse> Add(OrderReference order, AddOrderDetailsRequest request, string gestionUser, string windowsUser, CancellationToken ct)
+    public Task<DetailsSavedResponse> Add(OrderReference order, AddOrderDetailsRequest request, string gestionUser, string windowsUser, CancellationToken ct)
+        =>AddBatch(order,new AddOrderDetailsBatchRequest{Lines=[request]},gestionUser,windowsUser,ct);
+    public async Task<DetailsSavedResponse> AddBatch(OrderReference order,AddOrderDetailsBatchRequest request,string gestionUser,string windowsUser,CancellationToken ct)
     {
-        if (request.UnitPrice is null or < 0 || request.RequirementKeys.Count is < 1 or > 500 || request.RequirementKeys.Distinct(StringComparer.Ordinal).Count() != request.RequirementKeys.Count)
-            throw new ArgumentException("Selecciona requerimientos sin duplicados e ingresa el precio unitario.");
-        await using var session = await gateway.Begin(gestionUser, windowsUser, ct);
-        var header = await session.LockOrder(order, ct);
-        if (header.ClassCode != "01" || header.Status != "P")
-            throw new RegistrationConflictException("Solo se puede agregar detalle a una OC de avíos en estado Planeada.");
-        var pending = await session.Pending(header, request.ProductionOrder.Trim(), request.ItemCode.Trim(), ct);
-        var selected = new List<PendingRequirement>();
-        foreach (var key in request.RequirementKeys)
-        {
-            var matches = pending.Where(p => p.Key == key).ToList();
-            if (matches.Count != 1 || matches[0].Required <= 0) throw new RegistrationConflictException("Los saldos cambiaron o la selección ya fue incorporada. Vuelve a consultar OP e ítem.");
-            selected.Add(matches[0]);
+        if(request.Lines is null||request.Lines.Count is <1 or >500||request.Lines.Any(x=>x is null||x.UnitPrice is null or <0 or >99999999||x.RequirementKeys is null||x.RequirementKeys.Count is <1 or >500))
+            throw new ArgumentException("Selecciona requerimientos e ingresa un precio válido para cada ítem.");
+        foreach(var line in request.Lines){line.ProductionOrder=(line.ProductionOrder??"").Trim().ToUpperInvariant();line.ItemCode=(line.ItemCode??"").Trim().ToUpperInvariant();
+            if(!System.Text.RegularExpressions.Regex.IsMatch(line.ProductionOrder,"^[A-Z0-9]{5}$")||!System.Text.RegularExpressions.Regex.IsMatch(line.ItemCode,"^[A-Z0-9]{8}$"))throw new ArgumentException("Revisa las NP y los códigos de ítem del lote.");}
+        var keys=request.Lines.SelectMany(x=>x.RequirementKeys).ToList();
+        if(keys.Count>500||keys.Any(string.IsNullOrWhiteSpace)||keys.Distinct(StringComparer.Ordinal).Count()!=keys.Count||request.Lines.Select(x=>(x.ProductionOrder,x.ItemCode)).Distinct().Count()!=request.Lines.Count)
+            throw new ArgumentException("Selecciona hasta 500 requerimientos sin duplicados.");
+        if(request.Lines.GroupBy(x=>x.ItemCode).Any(g=>g.Select(x=>x.UnitPrice).Distinct().Count()!=1))throw new ArgumentException("Cada ítem debe tener un único precio unitario en el lote.");
+        await using var session=await gateway.Begin(gestionUser,windowsUser,ct);
+        var header=await session.LockOrder(order,ct);
+        if(header.ClassCode!="01"||header.Status!="P")throw new RegistrationConflictException("Solo se puede agregar detalle a una OC de avíos en estado Planeada.");
+        // Acquire demand locks in a stable order; validate the entire selection before writing.
+        var selected=new List<PendingRequirement>();
+        foreach(var line in request.Lines.OrderBy(x=>x.ProductionOrder,StringComparer.Ordinal).ThenBy(x=>x.ItemCode,StringComparer.Ordinal)){
+            var pending=await session.Pending(header,line.ProductionOrder,line.ItemCode,ct);
+            foreach(var key in line.RequirementKeys){var matches=pending.Where(x=>x.Key==key).ToList();
+                if(matches.Count!=1||matches[0].Required<=0||matches[0].ProductionOrder!=line.ProductionOrder||matches[0].ItemCode!=line.ItemCode)
+                    throw new RegistrationConflictException("Los saldos cambiaron o la selección ya fue incorporada. Vuelve a consultar los requerimientos del lote.");
+                selected.Add(matches[0]);
+            }
         }
-        var before = await session.Items(order, ct);
-        var previous = before.Select(i => i.Sequence).Order(StringComparer.Ordinal).LastOrDefault() ?? "000";
-        foreach (var requirement in selected) await session.InsertRequirement(order, previous, requirement, ct);
-        var after = await session.Items(order, ct);
-        var previousIds = before.Select(i => i.Sequence).ToHashSet(StringComparer.Ordinal);
-        var newItems = after.Where(i => !previousIds.Contains(i.Sequence)).ToList();
-        if (newItems.Count == 0) throw new RegistrationConflictException("No se generaron secuencias nuevas. La operación se revirtió.");
-        foreach (var item in newItems)
-            await session.SetPurchase(order, item.Sequence, QuantityCalculator.RoundRequiredQuantity(item.Required), request.UnitPrice.Value, ct);
+        var before=await session.Items(order,ct);var created=new List<SavedItem>();
+        // Keep all NPs for the same item together so Gestión preserves its existing grouping rules.
+        foreach(var group in selected.GroupBy(x=>x.ItemCode).OrderBy(x=>x.Key,StringComparer.Ordinal)){
+            var previous=before.Select(x=>x.Sequence).Order(StringComparer.Ordinal).LastOrDefault()??"000";
+            foreach(var row in group)await session.InsertRequirement(order,previous,row,ct);
+            var after=await session.Items(order,ct);var prior=before.Select(x=>x.Sequence).ToHashSet(StringComparer.Ordinal);
+            var added=after.Where(x=>!prior.Contains(x.Sequence)).ToList();
+            if(added.Count==0)throw new RegistrationConflictException("No se generaron secuencias nuevas. Se revirtió el lote completo.");
+            var price=request.Lines.First(x=>x.ItemCode==group.Key).UnitPrice!.Value;
+            foreach(var item in added)await session.SetPurchase(order,item.Sequence,QuantityCalculator.RoundRequiredQuantity(item.Required),price,ct);
+            created.AddRange(added);before=after;
+        }
         await session.Commit(ct);
-        return new(order.Series, order.Number, selected.Count, newItems.Count, newItems.Sum(i => i.Required), newItems.Sum(i => QuantityCalculator.RoundRequiredQuantity(i.Required)));
+        return new(order.Series,order.Number,selected.Count,created.Count,created.Sum(x=>x.Required),created.Sum(x=>QuantityCalculator.RoundRequiredQuantity(x.Required)));
     }
 }

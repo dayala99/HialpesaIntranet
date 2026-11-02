@@ -15,6 +15,7 @@ public sealed class PortalAccessFilter(IPortalAccessService access):IAsyncAuthor
  public static string[] Required(string controller,string action,string method)=>controller switch{
  "Dyeing" or "QualityControl"=>["dyeing.batches"],
  "QualityEvents"=>["quality.events"],"UnfinishedQualityEvents"=>["quality.unfinished"],
+ "PcpAnaliticas"=>["orders.query"],
  "AnalisisRbHistory"=>["orders.query"],
  "AnalisisRb"=>["orders.query"],
  "Imports" or "ImportControl"=>["imports"],"Avios" or "Provider"=>["orders.query","orders.create"],

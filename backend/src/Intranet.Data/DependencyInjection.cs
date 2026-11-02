@@ -7,6 +7,10 @@ public static class DependencyInjection
     public static IServiceCollection AddIntranetData(this IServiceCollection services)
     {
         services.AddScoped<GestionConnectionFactory>();
+        services.AddScoped<IPcpMailRepository,PcpMailRepository>();
+        services.AddScoped<IPcpAnaliticasRepository,PcpAnaliticasRepository>();
+        services.AddScoped<IAnalisisRbPendingRepository, AnalisisRbPendingRepository>();
+        services.AddScoped<IAnalisisRbHistorySearchRepository, AnalisisRbHistorySearchRepository>();
         services.AddScoped<IAnalisisRbOperationsRepository, AnalisisRbOperationsRepository>();
         services.AddScoped<IAnalisisRbImageRepository, AnalisisRbImageRepository>();
         services.AddScoped<IAnalisisRbRepository, AnalisisRbRepository>();

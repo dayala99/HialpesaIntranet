@@ -1,3 +1,7 @@
+import { PcpInboxComponent } from './pcp-inbox.component';
+import { PcpEntry } from './pcp.models';
+import { PendingComponent } from './pending.component';
+import { HistorySearchComponent } from './history-search.component';
 import { SharedModule } from '../../../../shared/shared.module';
 import { Component, DestroyRef, inject } from '@angular/core';
 import { SelectedProcessesComponent } from './selected-processes.component';
@@ -15,10 +19,11 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { AnalysisRow, HistoryRow, PartialSelection, Requotation, SectorAnalysis } from './analysis.models';
 import { AnalysisDraftService } from './analysis-draft.service';
 import { apiError } from '../../../../core/http/api-error';
-@Component({selector:'app-logistics-integrator',standalone:true,imports:[SharedModule,CommonModule,FormsModule,MatIconModule,AnalysisHeaderComponent,SelectedProcessesComponent,AnalysisPdfExportComponent],templateUrl:'./integrator.component.html',styleUrl:'./integrator.component.scss'})
+@Component({selector:'app-logistics-integrator',standalone:true,imports:[PcpInboxComponent,HistorySearchComponent,SharedModule,CommonModule,FormsModule,MatIconModule,AnalysisHeaderComponent,SelectedProcessesComponent,AnalysisPdfExportComponent],templateUrl:'./integrator.component.html',styleUrl:'./integrator.component.scss'})
 export class IntegratorComponent {
+ pcpListVisible=false;preparationId:number|null=null;private received:PcpEntry|null=null;
  otherOpened=false;
- searchTab:'np'|'others'='np';analysisTab:'np'|'others'='np';
+ searchTab:'np'|'others'|'history'|'pending'='pending';analysisTab:'np'|'others'|'pending'='np';
 
  filterPrice:number|null=null;filterTime:number|null=null;filterType='';filterBusy=false;typesBusy=false;typesLoaded=false;filterSearched=false;filterError='';typesError='';typeOptions:{code:string;description:string}[]=[];filterRows:AnalysisRow[]=[];filterHasMore=false;filterNextCursor:string|null=null;filterCursors:(string|null)[]=[null];filterPage=0;private appliedFilters:{price:number|null;time:number|null;type:string}={price:null,time:null,type:''};
  activateOthers(){this.searchTab='others';if(this.typesLoaded||this.typesBusy)return;this.typesBusy=true;this.typesError='';this.http.get<{code:string;description:string}[]>(environment.apiBaseUrl+'/logistica/analisis-rb/tipos',{withCredentials:true}).pipe(takeUntilDestroyed(this.destroy)).subscribe({next:rows=>{this.typeOptions=rows;this.typesLoaded=true;this.typesBusy=false;},error:error=>{this.typesBusy=false;this.typesError=apiError(error);}});}
@@ -33,27 +38,28 @@ export class IntegratorComponent {
  private readonly historyUrl=environment.apiBaseUrl+'/logistica/analisis-rb/historial';
  analysisReady=false;sectorAnalysis:SectorAnalysis|null=null;saving=false;saveError='';saveMessage='';partialSelection:PartialSelection|null=null;isRequotation=false;baseServicePrice:number|null=null;percentage:number|null=null;
  private saveSignature='';private requestId='';private lastSavedSignature='';
- get canSave(){return this.analysisReady&&!this.busy&&!this.saving&&!!this.session.current()?.canWriteDatabase&&!!this.current&&this.current.commercialPrice!=null&&this.current.sewingTime!=null&&this.current.sewingTime>0&&this.usedTime!=null&&this.usedTime>0&&this.servicePrice!=null&&this.servicePrice>=0&&this.otherExpenses!=null&&this.otherExpenses>=0&&(!this.isRequotation||this.validRequotation);}
+ get canSave(){return this.preparationId!==null&&this.analysisReady&&!this.busy&&!this.saving&&!!this.session.current()?.canWriteDatabase&&!!this.current&&this.current.commercialPrice!=null&&this.current.sewingTime!=null&&this.current.sewingTime>0&&this.usedTime!=null&&this.usedTime>0&&this.servicePrice!=null&&this.servicePrice>=0&&this.otherExpenses!=null&&this.otherExpenses>=0&&(!this.isRequotation||this.validRequotation);}
  get sameAsSaved(){return this.lastSavedSignature!==''&&this.signature()===this.lastSavedSignature;}
- private signature(){return JSON.stringify({source:this.current,usedTime:this.usedTime,servicePrice:this.servicePrice,otherExpenses:this.otherExpenses,partialSelection:this.partialSelection,requotation:this.requotation,sectorAnalysis:this.sectorAnalysis});}
+ private signature(){return JSON.stringify({preparationId:this.preparationId,source:this.current,usedTime:this.usedTime,servicePrice:this.servicePrice,otherExpenses:this.otherExpenses,partialSelection:this.partialSelection,requotation:this.requotation,sectorAnalysis:this.sectorAnalysis});}
  private newRequestId(){const values=crypto.getRandomValues(new Uint8Array(16));values[6]=(values[6]&15)|64;values[8]=(values[8]&63)|128;const hex=Array.from(values,n=>n.toString(16).padStart(2,'0')).join('');return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);}
  save(){
   if(!this.canSave||this.sameAsSaved)return;
   const signature=this.signature();if(signature!==this.saveSignature){this.saveSignature=signature;this.requestId=this.newRequestId();}
   this.saving=true;this.saveError='';this.saveMessage='';
-  this.http.post<HistoryRow>(this.historyUrl,{requestId:this.requestId,source:this.current,usedTime:this.usedTime,servicePrice:this.servicePrice,otherExpenses:this.otherExpenses,partialSelection:this.partialSelection,requotation:this.requotation,sectorAnalysis:this.sectorAnalysis},{withCredentials:true,headers:{'X-Intranet-Write':'1'}}).pipe(takeUntilDestroyed(this.destroy)).subscribe({next:row=>{this.saving=false;this.lastSavedSignature=signature;this.saveMessage='Análisis guardado. Registro '+row.id+'.';},error:error=>{this.saving=false;this.saveError=apiError(error)+' Puedes consultar el historial antes de reintentar.';}});
+  this.http.post<HistoryRow>(this.historyUrl,{preparationId:this.preparationId,requestId:this.requestId,source:this.current,usedTime:this.usedTime,servicePrice:this.servicePrice,otherExpenses:this.otherExpenses,partialSelection:this.partialSelection,requotation:this.requotation,sectorAnalysis:this.sectorAnalysis},{withCredentials:true,headers:{'X-Intranet-Write':'1'}}).pipe(takeUntilDestroyed(this.destroy)).subscribe({next:row=>{this.saving=false;this.lastSavedSignature=signature;this.saveMessage='Análisis guardado. Registro '+row.id+'.';},error:error=>{this.saving=false;this.saveError=apiError(error)+' Puedes consultar el historial antes de reintentar.';}});
  }
  openHistory(){this.openPage('historial');}
- openOperations(){this.openPage('costura');}
+ openOperations(){this.searchTab='pending';}
  private openPage(page:string){
   if(!this.searchedNp||this.busy||this.saving)return;
-  this.drafts.draft={searchTab:this.searchTab,analysisTab:this.analysisTab,otherSearch:{opened:this.otherOpened,price:this.filterPrice,time:this.filterTime,type:this.filterType,rows:this.filterRows,searched:this.filterSearched,hasMore:this.filterHasMore,nextCursor:this.filterNextCursor,cursors:this.filterCursors,page:this.filterPage,applied:this.appliedFilters},np:this.searchedNp,rows:this.rows,usedTime:this.usedTime,servicePrice:this.servicePrice,otherExpenses:this.otherExpenses,saveSignature:this.saveSignature,requestId:this.requestId,lastSavedSignature:this.lastSavedSignature,saveMessage:this.saveMessage,partialSelection:this.partialSelection,requotation:this.requotation,sectorAnalysis:this.sectorAnalysis,analysisReady:this.analysisReady};
+  this.drafts.draft={preparationId:this.preparationId,searchTab:this.searchTab,analysisTab:this.analysisTab,otherSearch:{opened:this.otherOpened,price:this.filterPrice,time:this.filterTime,type:this.filterType,rows:this.filterRows,searched:this.filterSearched,hasMore:this.filterHasMore,nextCursor:this.filterNextCursor,cursors:this.filterCursors,page:this.filterPage,applied:this.appliedFilters},np:this.searchedNp,rows:this.rows,usedTime:this.usedTime,servicePrice:this.servicePrice,otherExpenses:this.otherExpenses,saveSignature:this.saveSignature,requestId:this.requestId,lastSavedSignature:this.lastSavedSignature,saveMessage:this.saveMessage,partialSelection:this.partialSelection,requotation:this.requotation,sectorAnalysis:this.sectorAnalysis,analysisReady:this.analysisReady};
   void this.router.navigate(['/logistica/analiticas/'+page],{queryParams:{np:this.searchedNp}});
  }
  ngOnInit(){
+  if(this.route.snapshot.queryParamMap.get('tab')==='historial'){this.searchTab='history';return;}
   const np=(this.route.snapshot.queryParamMap.get('np')??'').trim().toUpperCase();const draft=this.drafts.draft;
-  if(draft&&(!np||np===draft.np)){this.searchTab=draft.searchTab??'np';this.analysisTab=draft.analysisTab??'np';const other=draft.otherSearch;if(other){this.otherOpened=other.opened??false;this.filterPrice=other.price;this.filterTime=other.time;this.filterType=other.type;this.filterRows=other.rows;this.filterSearched=other.searched;this.filterHasMore=other.hasMore;this.filterNextCursor=other.nextCursor;this.filterCursors=other.cursors;this.filterPage=other.page;this.appliedFilters=other.applied;}if(this.searchTab==='others')this.activateOthers();this.np=this.searchedNp=draft.np;this.rows=draft.rows;this.searched=true;this.usedTime=draft.usedTime;this.servicePrice=draft.servicePrice;this.otherExpenses=draft.otherExpenses;this.saveSignature=draft.saveSignature;this.requestId=draft.requestId;this.lastSavedSignature=draft.lastSavedSignature;this.saveMessage=draft.saveMessage;this.partialSelection=draft.partialSelection??null;this.sectorAnalysis=draft.sectorAnalysis??null;this.analysisReady=draft.analysisReady??false;this.isRequotation=draft.requotation?.enabled??false;this.baseServicePrice=this.isRequotation?(draft.requotation?.baseServicePrice??null):null;this.percentage=this.isRequotation?(draft.requotation?.percentage??null):null;this.drafts.draft=null;this.applyPartial();}
-  else if(np){this.np=np;this.search();}
+  if(draft&&(!np||np===draft.np)){this.preparationId=draft.preparationId??null;this.searchTab=draft.searchTab??'np';this.analysisTab=draft.analysisTab??'np';const other=draft.otherSearch;if(other){this.otherOpened=other.opened??false;this.filterPrice=other.price;this.filterTime=other.time;this.filterType=other.type;this.filterRows=other.rows;this.filterSearched=other.searched;this.filterHasMore=other.hasMore;this.filterNextCursor=other.nextCursor;this.filterCursors=other.cursors;this.filterPage=other.page;this.appliedFilters=other.applied;}if(this.searchTab==='others')this.activateOthers();this.np=this.searchedNp=draft.np;this.rows=draft.rows;this.searched=true;this.usedTime=draft.usedTime;this.servicePrice=draft.servicePrice;this.otherExpenses=draft.otherExpenses;this.saveSignature=draft.saveSignature;this.requestId=draft.requestId;this.lastSavedSignature=draft.lastSavedSignature;this.saveMessage=draft.saveMessage;this.partialSelection=draft.partialSelection??null;this.sectorAnalysis=draft.sectorAnalysis??null;this.analysisReady=draft.analysisReady??false;this.isRequotation=draft.requotation?.enabled??false;this.baseServicePrice=this.isRequotation?(draft.requotation?.baseServicePrice??null):null;this.percentage=this.isRequotation?(draft.requotation?.percentage??null):null;this.drafts.draft=null;this.applyPartial();}
+  else if(np){this.searchTab='np';this.np=np;this.search();}
  }
 
  usedTime:number|null=null;servicePrice:number|null=null;otherExpenses:number|null=0.03;
@@ -67,6 +73,8 @@ export class IntegratorComponent {
  recalculateServicePrice(){if(!this.isRequotation)return;this.servicePrice=this.validRequotation?Math.round(this.baseServicePrice!*this.percentage!*1e6)/1e6:null;}
  onServicePriceChanged(value:number|null){this.servicePrice=value;if(this.isRequotation)this.percentage=this.baseServicePrice!=null&&this.baseServicePrice>0&&value!=null&&Number.isFinite(value)?Number((value/this.baseServicePrice).toFixed(16)):null;}
  private applyPartial(){const pending=this.drafts.pendingAnalysis;if(pending?.np!==this.searchedNp||!this.current)return;this.partialSelection=pending.selection;this.sectorAnalysis=pending.sectorAnalysis;this.analysisReady=true;this.usedTime=pending.sectorAnalysis.isComplete?pending.sectorAnalysis.totalTime:Math.round(pending.selection!.operations.reduce((total,row)=>total+row.standardTime,0)*1e6)/1e6;this.drafts.pendingAnalysis=null;this.saveMessage='';this.saveError='';}
+ receive(entry:PcpEntry){if(this.busy||this.saving||!entry.selection)return;this.received=entry;this.searchTab='pending';this.np=entry.np;this.search();}
+ private applyReceived(){const entry=this.received;if(!entry?.selection||entry.np!==this.searchedNp||!this.current)return;const sector=entry.selection.sectorAnalysis;this.pcpListVisible=false;this.preparationId=entry.id;this.sectorAnalysis=sector;this.usedTime=entry.selectedTime;this.partialSelection=entry.isComplete?null:{tariff:sector.tariff,variant:sector.variant,sector:sector.sector,sectorName:sector.sectorName,sectorTotalTime:sector.totalTime,operations:entry.selection.operations};this.analysisReady=true;this.analysisTab='pending';this.received=null;}
  get analysisTotalTime(){return this.sectorAnalysis?.totalTime??this.current?.sewingTime??null;}
  get selectionTime(){return this.partialSelection?.operations.reduce((total,row)=>total+row.standardTime,0)??0;}
  get current(){return this.rows[0]??null;}
@@ -75,12 +83,13 @@ export class IntegratorComponent {
  np='';searchedNp='';busy=false;searched=false;error='';rows:AnalysisRow[]=[];
  search(){
   if(this.busy||this.saving)return;this.saveError='';this.saveMessage='';this.lastSavedSignature='';this.saveSignature='';this.requestId='';
-  const np=this.np.trim().toUpperCase();this.np=np;this.error='';this.rows=[];this.searched=false;this.usedTime=null;this.servicePrice=null;this.otherExpenses=0.03;this.partialSelection=null;this.sectorAnalysis=null;this.analysisReady=false;this.isRequotation=false;this.baseServicePrice=null;this.percentage=null;
+  const np=this.np.trim().toUpperCase();this.np=np;this.error='';this.rows=[];this.searched=false;this.usedTime=null;this.servicePrice=null;this.otherExpenses=0.03;this.preparationId=null;this.partialSelection=null;this.sectorAnalysis=null;this.analysisReady=false;this.isRequotation=false;this.baseServicePrice=null;this.percentage=null;
   if(!/^[A-Z0-9]{5}$/.test(np)){this.error='Ingresa una NP de 5 caracteres, por ejemplo J1907.';return;}
-  this.busy=true;this.searchedNp=np;this.analysisTab=this.searchTab;
-  this.http.get<AnalysisRow[]>(environment.apiBaseUrl+'/logistica/analisis-rb',{params:{np},withCredentials:true}).pipe(takeUntilDestroyed(this.destroy)).subscribe({next:rows=>{this.rows=rows;this.usedTime=rows[0]?.sewingTime??null;this.searched=true;this.busy=false;this.applyPartial();},error:error=>{this.error=apiError(error);this.busy=false;}});
+  this.busy=true;this.searchedNp=np;this.analysisTab=this.searchTab==='others'?'others':'np';
+  this.http.get<AnalysisRow[]>(environment.apiBaseUrl+'/logistica/analisis-rb',{params:{np},withCredentials:true}).pipe(takeUntilDestroyed(this.destroy)).subscribe({next:rows=>{this.rows=rows;this.usedTime=rows[0]?.sewingTime??null;this.searched=true;this.busy=false;this.applyPartial();this.applyReceived();},error:error=>{this.error=apiError(error);this.busy=false;this.received=null;}});
  }
 }
+
 
 
 

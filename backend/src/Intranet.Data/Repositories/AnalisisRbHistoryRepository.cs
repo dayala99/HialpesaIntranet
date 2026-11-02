@@ -15,8 +15,12 @@ public sealed class AnalisisRbHistoryRepository(GestionConnectionFactory factory
   var json=JsonSerializer.Serialize(snapshot,new JsonSerializerOptions(JsonSerializerDefaults.Web));
   var spanish=await AnalisisRbHistorySchema.UsesSpanish(connection,ct);
   object parameters=spanish?new{Cod_Solicitud=requestId,Cod_Fabrica=Plant,Cod_OrdPro=source.Np,Num_Prendas_Programadas=source.ProgrammedQuantity,Imp_Precio_Comercial=source.CommercialPrice,Min_Costura=source.SewingTime,Min_Considerados=snapshot.UsedTime,Imp_Precio_Servicio=snapshot.ServicePrice,Imp_Otros_Gastos=snapshot.OtherExpenses,Des_Ruta_Imagen=source.ImagePath,Txt_Datos_Analisis=json,Cod_Version_Reglas=snapshot.RuleVersion,Cod_Usuario=user,Cod_Traza=traceId}:new{RequestId=requestId,Factory=Plant,source.Np,source.ProgrammedQuantity,source.CommercialPrice,source.SewingTime,snapshot.UsedTime,snapshot.ServicePrice,snapshot.OtherExpenses,source.ImagePath,SnapshotJson=json,snapshot.RuleVersion,GestionUser=user,TraceId=traceId};
-  var command=new CommandDefinition("dbo.PA_LG_ANALISIS_RB_HISTORIAL_I0001",parameters,commandType:CommandType.StoredProcedure,commandTimeout:30,cancellationToken:ct);
-  return spanish?(await connection.QuerySingleAsync<AnalisisRbHistorialRegistro>(command)).ToContract():Utc(await connection.QuerySingleAsync<AnalisisRbHistory>(command));
+  await using var transaction=snapshot.PreparationId.HasValue?(SqlTransaction)await connection.BeginTransactionAsync(ct):null;
+  if(snapshot.PreparationId.HasValue)await connection.ExecuteAsync(new CommandDefinition("dbo.PA_LG_PCP_ANALITICAS_U0001",new{Cod_Fabrica=Plant,Cod_OrdPro=source.Np,Num_Envio=snapshot.PreparationId,Num_Registro_Historial=(long?)null,Cod_Usuario=user},transaction:transaction,commandType:CommandType.StoredProcedure,cancellationToken:ct));
+  var command=new CommandDefinition("dbo.PA_LG_ANALISIS_RB_HISTORIAL_I0001",parameters,transaction:transaction,commandType:CommandType.StoredProcedure,commandTimeout:30,cancellationToken:ct);
+  var saved=spanish?(await connection.QuerySingleAsync<AnalisisRbHistorialRegistro>(command)).ToContract():Utc(await connection.QuerySingleAsync<AnalisisRbHistory>(command));
+  if(snapshot.PreparationId.HasValue)await connection.ExecuteAsync(new CommandDefinition("dbo.PA_LG_PCP_ANALITICAS_U0001",new{Cod_Fabrica=Plant,Cod_OrdPro=source.Np,Num_Envio=snapshot.PreparationId,Num_Registro_Historial=saved.Id,Cod_Usuario=user},transaction:transaction,commandType:CommandType.StoredProcedure,cancellationToken:ct));
+  if(transaction!=null)await transaction.CommitAsync(ct);return saved;
  });
  public Task<AnalisisRbHistoryPage> Read(string np,long? id,int page,CancellationToken ct)=>Pending(async()=>{
   await using var connection=await factory.OpenAsync(ct);

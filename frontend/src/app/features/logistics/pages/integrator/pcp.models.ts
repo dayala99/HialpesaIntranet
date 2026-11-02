@@ -1,0 +1,2 @@
+import {SectorAnalysis,SelectedOperation} from './analysis.models';
+export interface PcpEntry{id:number;np:string;sector:string;tariff:string;variant:string;version:number;isComplete:boolean;status:string;totalOperations:number;selectedOperations:number;totalTime:number;selectedTime:number;user:string;sentAtUtc:string;historyId:number|null;selection:{np:string;sectorAnalysis:SectorAnalysis;operations:SelectedOperation[]}|null;}

@@ -1,6 +1,6 @@
 import { MatDialog } from '@angular/material/dialog';
 import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
-import { finalize, timer, Subject, debounceTime, switchMap, catchError, of } from 'rxjs';
+import { finalize, timer, Subject, debounceTime, switchMap, catchError, of, from, mergeMap, map, toArray } from 'rxjs';
 import { DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PurchaseOrdersApiService } from '../../services/purchase-orders-api.service';
@@ -35,39 +35,24 @@ export class OrderRegistrationComponent implements OnInit {
     error = '';
     message = '';
     saving = false;
-    detailGroup = '';
-    detailGroupOptions: LookupOption[] = [];
-    opOptions: LookupOption[] = [];
-    itemOptions: LookupOption[] = [];
-    opsLoading = false;
-    itemsLoading = false;
-    changeDetailGroup(value: string) { this.detailGroup = value; this.productionOrder = ''; this.itemCode = ''; this.opOptions = []; this.itemOptions = []; this.clearPending(); this.error = ''; this.itemsLoading = false; if (!this.orderReference || !value) {
-        this.opsLoading = false;
-        return;
-    } this.opsLoading = true; this.api.detailSelector(this.orderReference, value).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: rows => { if (this.detailGroup === value) {
-            this.opOptions = rows;
-            this.opsLoading = false;
-        } }, error: e => { if (this.detailGroup === value) {
-            this.error = apiError(e);
-            this.opsLoading = false;
-        } } }); }
-    changeDetailOp(value: string) { this.productionOrder = value; this.itemCode = ''; this.itemOptions = []; this.clearPending(); this.error = ''; if (!this.orderReference || !value) {
-        this.itemsLoading = false;
-        return;
-    } const group = this.detailGroup; this.itemsLoading = true; this.api.detailSelector(this.orderReference, group, value).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: rows => { if (this.detailGroup === group && this.productionOrder === value) {
-            this.itemOptions = rows;
-            this.itemsLoading = false;
-        } }, error: e => { if (this.detailGroup === group && this.productionOrder === value) {
-            this.error = apiError(e);
-            this.itemsLoading = false;
-        } } }); }
-    productionOrder = '';
-    itemCode = '';
-    unitPrice: number | null = null;
-    candidates: PendingRequirement[] = [];
-    selected = new Set<string>();
-    loadedProductionOrder = '';
-    loadedItemCode = '';
+    detailGroups:string[]=[];productionOrders:string[]=[];itemCodes:string[]=[];
+    detailGroupOptions:LookupOption[]=[];opOptions:LookupOption[]=[];itemOptions:LookupOption[]=[];
+    opsLoading=false;itemsLoading=false;
+    private selectorVersion=0;private groupsByOp=new Map<string,string[]>();private validPairs=new Set<string>();
+    candidates:PendingRequirement[]=[];selected=new Set<string>();prices:Record<string,number|null>={};
+    private pair(op:string,item:string){return op+'|'+item;}
+    groupsFor(op:string){return (this.groupsByOp.get(op)??[]).join(', ');}
+    changeDetailGroups(values:string[]){
+        this.detailGroups=values;this.productionOrders=[];this.itemCodes=[];this.opOptions=[];this.itemOptions=[];this.groupsByOp.clear();this.validPairs.clear();this.clearPending();this.error='';this.itemsLoading=false;
+        const version=++this.selectorVersion;if(!this.orderReference||!values.length){this.opsLoading=false;return;}const order=this.orderReference;this.opsLoading=true;
+        from(values).pipe(mergeMap(group=>this.api.detailSelector(order,group).pipe(map(rows=>({group,rows}))),4),toArray(),takeUntilDestroyed(this.destroyRef)).subscribe({next:results=>{if(version!==this.selectorVersion)return;const options=new Map<string,LookupOption>();for(const result of results)for(const row of result.rows){options.set(row.code,row);const groups=this.groupsByOp.get(row.code)??[];if(!groups.includes(result.group))groups.push(result.group);this.groupsByOp.set(row.code,groups);}this.opOptions=[...options.values()].sort((a,b)=>a.code.localeCompare(b.code));this.opsLoading=false;},error:e=>{if(version===this.selectorVersion){this.opsLoading=false;this.error=apiError(e);}}});
+    }
+    changeDetailOps(values:string[]){
+        this.productionOrders=values;this.itemCodes=[];this.itemOptions=[];this.validPairs.clear();this.clearPending();this.error='';const version=++this.selectorVersion;
+        if(!this.orderReference||!values.length){this.itemsLoading=false;return;}const order=this.orderReference;const pairs=values.flatMap(op=>(this.groupsByOp.get(op)??[]).map(group=>({op,group})));this.itemsLoading=true;
+        from(pairs).pipe(mergeMap(pair=>this.api.detailSelector(order,pair.group,pair.op).pipe(map(rows=>({op:pair.op,rows}))),4),toArray(),takeUntilDestroyed(this.destroyRef)).subscribe({next:results=>{if(version!==this.selectorVersion)return;const options=new Map<string,LookupOption>();for(const result of results)for(const row of result.rows){options.set(row.code,row);this.validPairs.add(this.pair(result.op,row.code));}this.itemOptions=[...options.values()].sort((a,b)=>a.code.localeCompare(b.code));this.itemsLoading=false;},error:e=>{if(version===this.selectorVersion){this.itemsLoading=false;this.error=apiError(e);}}});
+    }
+    changeDetailItems(values:string[]){this.itemCodes=values;this.clearPending();}
     private today() { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
     header: CreateOrderRequest = { classCode: '', supplierCode: '', conditionCode: '', discountCode: '', currencyCode: '', deliveryLocationCode: '', costCenterCode: '', manufacturingGroup: '', taxPercent: 18, deliveryStart: this.today(), deliveryEnd: this.today(), observations: '' };
     private destroyRef = inject(DestroyRef);
@@ -149,38 +134,31 @@ export class OrderRegistrationComponent implements OnInit {
         }
         this.api.createOrder({ ...this.header }).pipe(finalize(() => this.saving = false)).subscribe({ next: order => { this.orderCreated.emit(order); this.message = `OC ${order.series}-${order.number} guardada correctamente.`; }, error: e => this.error = apiError(e) });
     }
-    clearPending() { this.candidates = []; this.selected.clear(); this.unitPrice = null; this.loadedProductionOrder = ''; this.loadedItemCode = ''; this.message = ''; }
-    pending() {
-        if (!this.orderReference)
-            return;
-        this.error = '';
-        this.message = '';
-        this.clearPending();
-        const op = this.productionOrder.trim(), item = this.itemCode.trim();
-        if (!/^[A-Za-z0-9]{5}$/.test(op) || !/^[A-Za-z0-9]{8}$/.test(item)) {
-            this.error = 'Ingresa una OP de 5 caracteres y un código de ítem de 8 caracteres.';
-            return;
-        }
-        this.busy = true;
-        this.api.pending(this.orderReference, op, item).pipe(finalize(() => this.busy = false)).subscribe({ next: rows => { this.candidates = rows; this.loadedProductionOrder = op; this.loadedItemCode = item; this.selected = new Set(rows.map(r => r.key)); this.unitPrice = rows[0]?.unitPrice ?? null; if (!rows.length)
-                this.message = 'No hay requerimientos pendientes para esta OP e ítem.'; }, error: e => this.error = apiError(e) });
+    clearPending(){this.candidates=[];this.selected=new Set<string>();this.prices={};this.message='';}
+    pending(){
+        if(!this.orderReference||this.busy||this.saving||this.opsLoading||this.itemsLoading)return;
+        this.error='';this.clearPending();const order=this.orderReference;
+        const pairs=this.productionOrders.flatMap(op=>this.itemCodes.filter(item=>this.validPairs.has(this.pair(op,item))).map(item=>({op,item})));
+        if(!pairs.length||pairs.length>500){this.error='Selecciona entre 1 y 500 combinaciones válidas de NP e ítem.';return;}
+        this.busy=true;
+        from(pairs).pipe(mergeMap(pair=>this.api.pending(order,pair.op,pair.item),4),toArray(),finalize(()=>this.busy=false),takeUntilDestroyed(this.destroyRef)).subscribe({next:results=>{
+            this.candidates=[...new Map(results.flat().map(row=>[row.key,row])).values()].sort((a,b)=>a.itemCode.localeCompare(b.itemCode)||a.productionOrder.localeCompare(b.productionOrder));
+            this.selected=new Set(this.candidates.map(row=>row.key));
+            for(const item of new Set(this.candidates.map(row=>row.itemCode))){const prices=[...new Set(this.candidates.filter(row=>row.itemCode===item).map(row=>row.unitPrice))];this.prices[item]=prices.length===1?prices[0]:null;}
+            if(!this.candidates.length)this.message='No hay requerimientos pendientes para la selección.';
+        },error:e=>this.error=apiError(e)});
     }
-    toggle(key: string, checked: boolean) { if (checked)
-        this.selected.add(key);
-    else
-        this.selected.delete(key); }
-    toggleAll(checked: boolean) { this.selected = checked ? new Set(this.candidates.map(r => r.key)) : new Set(); }
-    get chosen() { return this.candidates.filter(r => this.selected.has(r.key)); }
-    get requiredTotal() { return this.chosen.reduce((s, r) => s + r.required, 0); }
-    get proposedTotal() { return this.chosen.reduce((s, r) => s + r.purchase, 0); }
-    saveDetails() {
-        if (!this.orderReference || this.unitPrice === null || !this.selected.size || this.saving || !this.session.current()?.canWriteDatabase)
-            return;
-        this.error = '';
-        this.message = '';
-        this.saving = true;
-        const reference = { ...this.orderReference };
-        this.api.addDetails(reference, this.loadedProductionOrder, this.loadedItemCode, Array.from(this.selected), this.unitPrice).pipe(finalize(() => this.saving = false)).subscribe({ next: result => { this.clearPending(); this.message = `Detalle registrado: ${result.requirementsAdded} requerimientos, ${result.itemsAdded} secuencias nuevas. C. requerida: ${result.requiredTotal}; C. compra registrada: ${result.purchaseTotal}.`; this.detailsSaved.emit(reference); }, error: e => { this.error = apiError(e); if (e.status === 409)
-                this.clearPending(); } });
+    toggle(key:string,checked:boolean){if(checked)this.selected.add(key);else this.selected.delete(key);}
+    toggleAll(checked:boolean){this.selected=checked?new Set(this.candidates.map(row=>row.key)):new Set<string>();}
+    get chosen(){return this.candidates.filter(row=>this.selected.has(row.key));}
+    get requiredTotal(){return this.chosen.reduce((sum,row)=>sum+row.required,0);}
+    get proposedTotal(){return this.chosen.reduce((sum,row)=>sum+row.purchase,0);}
+    get priceItems(){return this.itemOptions.filter(item=>this.candidates.some(row=>row.itemCode===item.code&&this.selected.has(row.key)));}
+    get canSaveDetails(){return !!this.orderReference&&!this.saving&&!this.busy&&!!this.session.current()?.canWriteDatabase&&this.selected.size>0&&this.selected.size<=500&&this.priceItems.every(item=>this.prices[item.code]!=null&&Number.isFinite(this.prices[item.code])&&this.prices[item.code]!>=0&&this.prices[item.code]!<=99999999);}
+    saveDetails(){
+        if(!this.canSaveDetails||!this.orderReference)return;this.error='';this.message='';this.saving=true;const reference={...this.orderReference};
+        const pairs=new Map<string,{productionOrder:string;itemCode:string;requirementKeys:string[];unitPrice:number}>();
+        for(const row of this.chosen){const key=this.pair(row.productionOrder,row.itemCode);const line=pairs.get(key)??{productionOrder:row.productionOrder,itemCode:row.itemCode,requirementKeys:[],unitPrice:this.prices[row.itemCode]!};line.requirementKeys.push(row.key);pairs.set(key,line);}
+        this.api.addDetailsBatch(reference,[...pairs.values()]).pipe(finalize(()=>this.saving=false),takeUntilDestroyed(this.destroyRef)).subscribe({next:result=>{this.clearPending();this.message=`Lote registrado: ${result.requirementsAdded} requerimientos, ${result.itemsAdded} secuencias nuevas. C. requerida: ${result.requiredTotal}; C. compra registrada: ${result.purchaseTotal}.`;this.detailsSaved.emit(reference);},error:e=>{this.error=apiError(e);if(e.status===409){this.clearPending();this.error=apiError(e);}}});
     }
 }

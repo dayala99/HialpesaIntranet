@@ -18,6 +18,8 @@
           <a routerLink="/logistica/analiticas" routerLinkActive="active"><mat-icon aria-hidden="true">hub</mat-icon> Analíticas</a>
         </div>
       </div>
+      <button class="nav-group-toggle" *ngIf="session.can('orders.query')" type="button" (click)="pcpOpen=!pcpOpen" [attr.aria-expanded]="pcpOpen" aria-controls="pcp-menu"><mat-icon aria-hidden="true">assignment</mat-icon><span class="nav-group-label">PCP</span><mat-icon class="nav-chevron" aria-hidden="true">{{pcpOpen?'expand_more':'chevron_right'}}</mat-icon></button>
+      <div id="pcp-menu" *ngIf="session.can('orders.query')" class="nav-submenu" [hidden]="!pcpOpen"><a routerLink="/pcp/secuenciador" routerLinkActive="active"><mat-icon aria-hidden="true">view_list</mat-icon> Secuenciador</a></div>
       <button class="nav-group-toggle" *ngIf="session.canAny('dyeing.batches')" type="button" (click)="dyeingOpen=!dyeingOpen" [attr.aria-expanded]="dyeingOpen" aria-controls="dyeing-menu"><mat-icon aria-hidden="true">palette</mat-icon><span class="nav-group-label">Tintorería</span><mat-icon class="nav-chevron" aria-hidden="true">{{dyeingOpen ? 'expand_more' : 'chevron_right'}}</mat-icon></button>
       <div id="dyeing-menu" *ngIf="session.canAny('dyeing.batches')" class="nav-submenu" [hidden]="!dyeingOpen">
         <a *ngIf="session.can('dyeing.batches')" routerLink="/tintoreria/generacion-partidas" routerLinkActive="active"><mat-icon aria-hidden="true">format_color_fill</mat-icon> Generación Partidas - Tintoreria</a>

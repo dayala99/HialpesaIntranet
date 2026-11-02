@@ -22,5 +22,6 @@ public interface IOrderRegistrationApplicationService
     Task<ServiceResult> DetailSelector(string series, string number, string? group, string? productionOrder, CancellationToken ct);
     Task<ServiceResult> Pending(string series, string number, string productionOrder, string itemCode, CancellationToken ct);
     Task<ServiceResult> Add(string series, string number, AddOrderDetailsRequest request, CancellationToken ct);
+    Task<ServiceResult> AddBatch(string series,string number,AddOrderDetailsBatchRequest request,CancellationToken ct);
     Task<ServiceResult> Print(string series, string number, CancellationToken ct);
 }

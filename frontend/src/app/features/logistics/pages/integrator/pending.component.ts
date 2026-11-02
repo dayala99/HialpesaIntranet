@@ -1,0 +1,19 @@
+import {Component,DestroyRef,EventEmitter,Injectable,Input,Output,inject} from '@angular/core';import {CommonModule} from '@angular/common';import {FormsModule} from '@angular/forms';import {HttpClient} from '@angular/common/http';import {takeUntilDestroyed} from '@angular/core/rxjs-interop';import {timer,switchMap,takeWhile,finalize} from 'rxjs';import {environment} from '../../../../../environments/environment';import {apiError} from '../../../../core/http/api-error';import {AnalysisRow} from './analysis.models';import {SessionService} from '../../../../core/auth/session.service';
+interface PendingIndicators{purchaseOrderReady:boolean;tariffReady:boolean;technicalSheetReady:boolean;purchaseOrderStatus:string;tariffStatus:string;technicalSheetStatus:string;}
+interface PendingResult{statuses?:Record<string,PendingIndicators>;rows:AnalysisRow[];reportRows:number;detailRows:number;generatedAtUtc:string;}
+interface PendingStatus{status:'loading'|'ready'|'failed';result:PendingResult|null;error:string|null;}
+@Injectable({providedIn:'root'})export class PendingState{loading=false;owner='';result:PendingResult|null=null;filter='';page=0;}
+@Component({selector:'app-analytics-pending',standalone:true,imports:[CommonModule,FormsModule],templateUrl:'./pending.component.html',styleUrl:'./pending.component.scss'})
+export class PendingComponent {
+ @Input()pcpMode=false;
+ @Input()excludedNps:ReadonlySet<string>=new Set<string>();
+ readonly state=inject(PendingState);private session=inject(SessionService);private http=inject(HttpClient);private destroy=inject(DestroyRef);busy=false;error='';@Output()openNp=new EventEmitter<string>();
+ ngOnInit(){const owner=this.session.current()?.gestionUser??'';if(this.state.owner!==owner){Object.assign(this.state,new PendingState());this.state.owner=owner;}if(!this.state.result||this.state.loading)this.load(false);}
+ load(refresh:boolean){if(this.busy)return;this.busy=true;this.state.loading=true;this.error='';let first=true;timer(0,3000).pipe(switchMap(()=>{const params:Record<string,string>=first&&refresh?{refresh:'true'}:{};first=false;return this.http.get<PendingStatus>(environment.apiBaseUrl+'/logistica/analisis-rb/pendientes',{params,withCredentials:true});}),takeWhile(value=>value.status==='loading',true),takeUntilDestroyed(this.destroy),finalize(()=>this.busy=false)).subscribe({next:value=>{if(value.status!=='loading')this.state.loading=false;if(value.status==='ready'&&value.result){this.state.result=value.result;this.state.page=0;}if(value.status==='failed')this.error=value.error||'No se pudo obtener el secuenciador.';},error:e=>{this.state.loading=false;this.error=apiError(e);}});}
+ private normalize(value:unknown){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();}
+ get filtered(){const term=this.normalize(this.state.filter);return this.state.result?.rows.filter(row=>{if(this.excludedNps.has(row.np.trim().toUpperCase()))return false;if(!term)return true;const status=this.state.result?.statuses?.[row.np];const dates=[row.sewingStartDate,row.sewingEndDate,row.dispatchDate].map(value=>value?value.slice(0,10).split('-').reverse().join('/'):'Sin dato');return this.normalize([row.np,row.clientName,row.clientStyle,row.divisionName,row.lineName,row.garmentType,row.fabricDescription,row.colorName,row.requiredQuantity,row.programmedQuantity,row.commercialPrice,row.sewingTime,...dates,this.date,status?.tariffStatus,status?.technicalSheetStatus,'Por definir'].join(' ')).includes(term);})??[];}
+
+ get pages(){return Math.max(1,Math.ceil(this.filtered.length/50));}get visible(){return this.filtered.slice(this.state.page*50,(this.state.page+1)*50);}get date(){return this.state.result?new Intl.DateTimeFormat('es-PE',{timeZone:'America/Bogota',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(this.state.result.generatedAtUtc)):'';}
+}
+
+

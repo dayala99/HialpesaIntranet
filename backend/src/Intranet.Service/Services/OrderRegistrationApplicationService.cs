@@ -125,6 +125,13 @@ public sealed class OrderRegistrationApplicationService(OrderRegistrationService
         return Ok(result);
     }
 
+    public async Task<ServiceResult> AddBatch(string series,string number,AddOrderDetailsBatchRequest request,CancellationToken ct){
+        var actor=WriteActor();if(await Accessible(series,number,ct) is not {Class:"01"})return NotFound();
+        var result=await service.AddBatch(new(series,number),request,actor.Gestion,actor.Windows,ct);
+        logger.LogInformation("Lote agregado a {Series}-{Number}: {Count} requerimientos, usuario {User}, trace {Trace}",series,number,result.RequirementsAdded,actor.Gestion,Actor.TraceIdentifier);
+        return Ok(result);
+    }
+
     public async Task<ServiceResult> Print(string series, string number, CancellationToken ct)
     {
         var order = await Accessible(series, number, ct);

@@ -1,6 +1,8 @@
 namespace Intranet.Entity;
 public sealed record AnalisisRbRow
 {
+ public string? TariffStatus {get;init;}
+ public string? TechnicalSheetStatus {get;init;}
  public string Np {get;init;}="";
  public int ProgrammedQuantity {get;init;}
  public decimal? CommercialPrice {get;init;}

@@ -2,8 +2,9 @@ using Intranet.Service;
 using Microsoft.AspNetCore.Mvc;
 namespace Intranet.Api.Controllers;
 [ApiController,Route("api/v1/logistica/analisis-rb")]
-public sealed class AnalisisRbController(IAnalisisRbService service,IAnalisisRbImageService images,IAnalisisRbOperationsService operations):ControllerBase
+public sealed class AnalisisRbController(IAnalisisRbService service,IAnalisisRbImageService images,IAnalisisRbOperationsService operations,IAnalisisRbPendingService pending):ControllerBase
 {
+ [HttpGet("pendientes")]public IActionResult Pending([FromQuery]bool refresh=false){Response.Headers.CacheControl="no-store";return pending.Read(refresh).ToActionResult();}
  [HttpGet("otros")] public async Task<IActionResult> Filter([FromQuery]decimal? price,[FromQuery]decimal? time,[FromQuery]string? type,[FromQuery]string? cursor,CancellationToken ct){Response.Headers.CacheControl="no-store";return(await service.Filter(price,time,type,cursor,ct)).ToActionResult();}
  [HttpGet("tipos")] public async Task<IActionResult> Types(CancellationToken ct){Response.Headers.CacheControl="no-store";return(await service.Types(ct)).ToActionResult();}
  [HttpGet("costura")] public async Task<IActionResult> SewingOperations([FromQuery]string np,[FromQuery]string? variant,[FromQuery]string? sector,CancellationToken ct){Response.Headers.CacheControl="no-store";return(await operations.Read(np,variant,ct,sector)).ToActionResult();}

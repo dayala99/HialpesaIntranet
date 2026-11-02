@@ -5,6 +5,7 @@ import { SessionService } from '../core/auth/session.service';
 export class ShellComponent {
     session = inject(SessionService);
     menuOpen = window.matchMedia('(min-width: 1025px)').matches;
+    pcpOpen = true;
     logisticsOpen = true;
     logisticsMaintenanceOpen = true;
     logisticsQueriesOpen = true;

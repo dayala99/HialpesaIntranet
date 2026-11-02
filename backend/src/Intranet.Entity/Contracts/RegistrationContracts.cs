@@ -79,3 +79,7 @@ public sealed class UpdateOrderItemRequest : IValidatableObject
 public sealed class RemoveRequirementLinksRequest { [Required, MinLength(1), MaxLength(500)] public List<string> Keys { get; set; } = []; }
 
 public sealed record SupplierDefaults(string ConditionCode, string DiscountCode, string Origin, decimal? TaxPercent);
+
+public sealed class AddOrderDetailsBatchRequest {
+ [Required,MinLength(1),MaxLength(500)]public List<AddOrderDetailsRequest> Lines{get;set;}=[];
+}

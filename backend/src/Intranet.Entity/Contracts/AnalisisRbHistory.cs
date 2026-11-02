@@ -5,6 +5,7 @@ public sealed record AnalisisRbRequotation(bool Enabled,decimal? BaseServicePric
 public sealed record AnalisisRbSectorAnalysis(string Tariff,string Variant,string Sector,string SectorName,decimal TotalTime,int TotalOperations,int SelectedOperations,bool IsComplete);
 public sealed class AnalisisRbSave
 {
+ public long? PreparationId{get;set;}
  public AnalisisRbPartialSelection? PartialSelection {get;set;}
  public AnalisisRbRequotation? Requotation {get;set;}
  public AnalisisRbSectorAnalysis? SectorAnalysis {get;set;}
@@ -15,7 +16,7 @@ public sealed class AnalisisRbSave
  public decimal OtherExpenses {get;set;}
 }
 public sealed record AnalisisRbCalculated(decimal? BaseVm,decimal CommercialTotal,decimal ServiceVm,decimal Difference,decimal? Profitability,decimal RemovedTime,string TimeLabel,string Observation,decimal ServiceWithExpenses);
-public sealed record AnalisisRbSnapshot(AnalisisRbRow Source,decimal UsedTime,decimal ServicePrice,decimal OtherExpenses,AnalisisRbCalculated Calculated,DateTime AnalysisDate,string RuleVersion){public AnalisisRbPartialSelection? PartialSelection{get;init;}public AnalisisRbRequotation? Requotation{get;init;}public AnalisisRbSectorAnalysis? SectorAnalysis{get;init;}}
+public sealed record AnalisisRbSnapshot(AnalisisRbRow Source,decimal UsedTime,decimal ServicePrice,decimal OtherExpenses,AnalisisRbCalculated Calculated,DateTime AnalysisDate,string RuleVersion){public long? PreparationId{get;init;}public AnalisisRbPartialSelection? PartialSelection{get;init;}public AnalisisRbRequotation? Requotation{get;init;}public AnalisisRbSectorAnalysis? SectorAnalysis{get;init;}}
 public sealed class AnalisisRbHistory
 {
  public long Id {get;set;}

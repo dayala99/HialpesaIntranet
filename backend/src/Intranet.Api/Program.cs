@@ -49,6 +49,7 @@ builder.Services.AddScoped<RequestActor>(services =>
 });
 builder.Services.AddIntranetData();
 builder.Services.AddIntranetServices();
+if(!demo && builder.Configuration.GetValue("PcpMail:Enabled",true))builder.Services.AddHostedService<Intranet.Api.Notifications.PcpMailWorker>();
 var app = builder.Build();
 app.UseExceptionHandler(handler => handler.Run(async context =>
 {

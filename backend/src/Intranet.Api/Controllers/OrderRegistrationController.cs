@@ -64,6 +64,9 @@ public sealed class OrderRegistrationController(IOrderRegistrationApplicationSer
     [HttpPost("ordenes/{series}/{number}/detalles"), Consumes("application/json")]
     public async Task<ActionResult<DetailsSavedResponse>> Add([RegularExpression("^[0-9]{3}$")] string series, [RegularExpression("^[0-9]{6}$")] string number, [FromBody] AddOrderDetailsRequest request, CancellationToken ct)
     { return (await service.Add(series, number, request, ct)).ToActionResult(); }
+    [HttpPost("ordenes/{series}/{number}/detalles/lote"),Consumes("application/json")]
+    public async Task<ActionResult<DetailsSavedResponse>> AddBatch([RegularExpression("^[0-9]{3}$")]string series,[RegularExpression("^[0-9]{6}$")]string number,[FromBody]AddOrderDetailsBatchRequest request,CancellationToken ct)
+    {return(await service.AddBatch(series,number,request,ct)).ToActionResult();}
     [HttpGet("ordenes/{series}/{number}/impresion")]
     public async Task<ActionResult<PrintOrder>> Print([RegularExpression("^[0-9]{3}$")] string series, [RegularExpression("^[0-9]{6}$")] string number, CancellationToken ct)
     { return (await service.Print(series, number, ct)).ToActionResult(); }

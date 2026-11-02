@@ -4,6 +4,7 @@ import { catchError, map, of } from 'rxjs';
 import { SessionService } from './session.service';
 export function requiredOption(url:string):string|null {
  const path=url.split(/[?#]/)[0].replace(/\/$/,'');
+ if(path==='/pcp/secuenciador'||path.startsWith('/pcp/secuenciador/'))return 'orders.query';
  if(path==='/logistica/analiticas'||path.startsWith('/logistica/analiticas/'))return 'orders.query';
  if(path==='/logistica/avios/nueva')return 'orders.create';
  if(path==='/logistica/avios'||path.startsWith('/logistica/avios/'))return 'orders.query';
